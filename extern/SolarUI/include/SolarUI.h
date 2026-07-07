@@ -1,11 +1,3 @@
-/*
-    SolarUI
-    Lightweight UI framework for FreeGLUT/OpenGL
-
-    Copyright (c) 2026 Ellie-Mae Dawson
-
-    Licensed under the MIT License
-*/
 #ifndef SOLAR_UI_H
 #define SOLAR_UI_H
 

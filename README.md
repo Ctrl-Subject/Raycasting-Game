@@ -6,3 +6,5 @@ This repository contains the game's source code, along with a copy of the projec
 
 current compilation command
 g++ -std=c++17 -Iinclude -Iextern/freeglut/include -Lextern/freeglut/lib src/main.cpp src/UI/Framework.cpp -lfreeglut -lSolarUI -lopengl32 -lgdi32 -luser32 -lshell32 -lwinmm -o RaycastingGame.exe
+
+g++ "src/main.cpp" "src/UI/Framework.cpp" -std=c++17 -o main.exe -I "src" -I "extern/SolarUI/include" -L "extern/SolarUI/lib" -lSolarUI -lfreeglut -lopengl32 -lglu32

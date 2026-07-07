@@ -21,13 +21,13 @@ SolarUI::Button exitButton                      (50, 300, 200, 50, "Exit");
 
 
 // Settings Menu stuff
-SolarUI::Label settingsTitle                    ("Settings", 50, 100);
+SolarUI::Label settingsTitle                    ("Settings", 100, 100);
 SolarUI::Button displaySettings                 (50, 75, 200, 50, "Display");
 SolarUI::Button controlsSettings                (50, 150, 200, 50, "Controls");
 SolarUI::Button audioSettings                   (50, 225, 200, 50, "Audio");
 SolarUI::Button saveButton                      (50, 300, 200, 50, "Save");
-SolarUI::Button backButton                      (50, 375, 200, 50, "Back");
-SolarUI::Button helpButton                      (50, 450, 200, 50, "Help");
+SolarUI::Button helpButton                      (50, 375, 200, 50, "Help");
+SolarUI::Button backButton                      (50, 450, 200, 50, "Back");
 
 
 // Display Settings stuff ********************************************************
@@ -35,45 +35,54 @@ SolarUI::Label displaySettingsTitle             ("Display", 300, 100);
 
 /* Resolution Dropdown */
 
-SolarUI::Checkbox fullscreenCheckbox            (300, 200, 20, 20, "Fullscreen");
-SolarUI::Checkbox borderlessFullscreenCheckbox  (300, 225, 20, 20, "Borderless Fullscreen");
+SolarUI::Checkbox fullscreenCheckbox            (300, 150, 20, 20, "Fullscreen");
+SolarUI::Checkbox borderlessFullscreenCheckbox  (300, 200, 20, 20, "Borderless Fullscreen");
 SolarUI::Slider gammaSlider                     (300, 250, 200, 20, "Gamma");
-SolarUI::Slider fovSlider                       (300, 500, 200, 20, "Field of View");
+SolarUI::Slider fovSlider                       (300, 300, 200, 20, "Field of View");
 
 /* Renderer Engine Dropdown */
 
-SolarUI::Label graphicsSettingsTitle            ("Graphics", 500, 100);
+SolarUI::Label graphicsSettingsTitle            ("Graphics", 600, 100);
 
 /* Graphics Quality Dropdown */
 
-SolarUI::Checkbox AvatarsCheckbox               (500, 300, 20, 20, "Display Avatars");
-SolarUI::Checkbox TexturesCheckbox              (500, 350, 20, 20, "Display WallTextures");
-SolarUI::Slider framerateSlider                 (500, 400, 200, 20, "Framerate Limit");
-SolarUI::Checkbox vsyncCheckbox                 (500, 450, 20, 20, "V-Sync");
-SolarUI::Checkbox antiAliasingCheckbox          (500, 500, 20, 20, "Anti-Aliasing");
-SolarUI::Checkbox motionBlurCheckbox            (500, 550, 20, 20, "Motion Blur");
+SolarUI::Checkbox AvatarsCheckbox               (600, 150, 20, 20, "Display Avatars");
+SolarUI::Checkbox TexturesCheckbox              (600, 200, 20, 20, "Display WallTextures");
+SolarUI::Slider framerateSlider                 (600, 250, 200, 20, "Framerate Limit");
+SolarUI::Checkbox vsyncCheckbox                 (600, 300, 20, 20, "V-Sync");
+SolarUI::Checkbox antiAliasingCheckbox          (600, 350, 20, 20, "Anti-Aliasing");
+SolarUI::Checkbox motionBlurCheckbox            (600, 400, 20, 20, "Motion Blur");
 
 // *******************************************************************************
 
 
 // Controls Settings stuff *******************************************************
+SolarUI::Label controlsSettingsTitle                 ("Controls", 300, 100);
+/*Table of Controls
+    Contents:
+    A table that lists all the controls and their current key bindings.
+    The user can click on a control to change its key binding.
+*/
+SolarUI::Slider MouseSensitivitySlider          (300, 150, 200, 20, "Mouse Sensitivity");
+SolarUI::Slider InvertMouseYSlider              (300, 200, 200, 20, "Invert Mouse Y-Axis");
+SolarUI::Checkbox MouseONCheckbox               (300, 250, 20, 20, "Controller Support");
 
 // *******************************************************************************
 
 
 // Audio Settings stuff
-
-SolarUI::Slider masterVolumeSlider              (100, 200, 200, 20, "Master Volume");
-SolarUI::Slider lobbyMusicVolumeSlider          (100, 250, 200, 20, "Lobby Music Volume");
-SolarUI::Slider inGameMusicVolumeSlider         (100, 300, 200, 20, "Game Music Volume");
-SolarUI::Slider sfxVolumeSlider                 (100, 350, 200, 20, "Sound Effects Volume");
+SolarUI::Label audioSettingsTitle               ("Audio", 300, 100);
+SolarUI::Slider masterVolumeSlider              (300, 150, 200, 20, "Master Volume");
+SolarUI::Slider lobbyMusicVolumeSlider          (300, 200, 200, 20, "Lobby Music Volume");
+SolarUI::Slider inGameMusicVolumeSlider         (300, 250, 200, 20, "Game Music Volume");
+SolarUI::Slider sfxVolumeSlider                 (300, 300, 200, 20, "Sound Effects Volume");
 
 // ***************************************************************************
 
 
 // Help Menu stuff ***************************************************************
 
-SolarUI::Label helpTitle                        ("Help", 100, 100);
+SolarUI::Label helpTitle                        ("Help", 300, 100);
 
 /* Help Content Text Box
     Contents:
@@ -225,10 +234,20 @@ namespace framework {
     }
 
     void drawControlsSettings() {
+        // Code to draw the controls settings
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
+        controlsSettingsTitle.Draw();
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_10);
+        MouseSensitivitySlider.Draw();
+        InvertMouseYSlider.Draw();
+        MouseONCheckbox.Draw();
     }
 
     void drawAudioSettings() {
         // Code to draw the audio settings
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
+        audioSettingsTitle.Draw();
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_10);
         masterVolumeSlider.Draw();
         lobbyMusicVolumeSlider.Draw();
         inGameMusicVolumeSlider.Draw();
@@ -239,6 +258,7 @@ namespace framework {
         // Code to draw the help menu
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         helpTitle.Draw();
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_10);
     }
 
     void drawMainMenu() {
