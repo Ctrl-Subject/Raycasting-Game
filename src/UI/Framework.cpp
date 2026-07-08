@@ -21,7 +21,7 @@ SolarUI::Button exitButton                      (50, 300, 200, 50, "Exit");
 
 
 // Settings Menu stuff
-SolarUI::Label settingsTitle                    ("Settings", 100, 100);
+SolarUI::Label settingsTitle                    ("Settings", 10.0, 100);
 SolarUI::Button displaySettings                 (50, 75, 200, 50, "Display");
 SolarUI::Button controlsSettings                (50, 150, 200, 50, "Controls");
 SolarUI::Button audioSettings                   (50, 225, 200, 50, "Audio");
@@ -46,8 +46,8 @@ SolarUI::Label graphicsSettingsTitle            ("Graphics", 600, 100);
 
 /* Graphics Quality Dropdown */
 
-SolarUI::Checkbox AvatarsCheckbox               (600, 150, 20, 20, "Display Avatars");
-SolarUI::Checkbox TexturesCheckbox              (600, 200, 20, 20, "Display WallTextures");
+SolarUI::Checkbox showAvatarsCheckbox               (600, 150, 20, 20, "Display Avatars");
+SolarUI::Checkbox showTexturesCheckbox              (600, 200, 20, 20, "Display WallTextures");
 SolarUI::Slider framerateSlider                 (600, 250, 200, 20, "Framerate Limit");
 SolarUI::Checkbox vsyncCheckbox                 (600, 300, 20, 20, "V-Sync");
 SolarUI::Checkbox antiAliasingCheckbox          (600, 350, 20, 20, "Anti-Aliasing");
@@ -162,6 +162,26 @@ namespace framework {
     void update() {
         // Update the UI framework state, handle input, etc.
         SolarUI::Update();
+        // Update all UI elements based on the current state
+        fullscreenCheckbox          .Update();
+        borderlessFullscreenCheckbox.Update();
+        gammaSlider                 .Update();
+        fovSlider                   .Update();
+        showAvatarsCheckbox         .Update();
+        showTexturesCheckbox        .Update();
+        framerateSlider             .Update();
+        vsyncCheckbox               .Update();
+        antiAliasingCheckbox        .Update();
+        motionBlurCheckbox          .Update();
+
+        MouseSensitivitySlider      .Update();
+        InvertMouseYSlider          .Update();
+        MouseONCheckbox             .Update();
+        
+        masterVolumeSlider          .Update();
+        lobbyMusicVolumeSlider      .Update();
+        inGameMusicVolumeSlider     .Update();
+        sfxVolumeSlider             .Update();
         handleMainMenuClicks();
         SolarUI::MousePressed = false;
     }
@@ -197,15 +217,19 @@ namespace framework {
             case DISPLAY_SETTINGS_MENU:
                 drawDisplaySettings();
                 break;
+
             case CONTROLS_SETTINGS_MENU:
                 drawControlsSettings();
                 break;
+
             case AUDIO_SETTINGS_MENU:
                 drawAudioSettings();
                 break;
+
             case HELP_MENU:
                 drawHelpMenu();
                 break;
+
             default:
                 break;
         }
@@ -224,8 +248,8 @@ namespace framework {
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         graphicsSettingsTitle.Draw();
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_10);
-        AvatarsCheckbox.Draw();
-        TexturesCheckbox.Draw();
+        showAvatarsCheckbox.Draw();
+        showTexturesCheckbox.Draw();
         framerateSlider.Draw();
         vsyncCheckbox.Draw();
         antiAliasingCheckbox.Draw();

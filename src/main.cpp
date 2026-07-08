@@ -2,65 +2,74 @@
 #include <SolarUI.h>
 #include "UI/Framework.h"
 
-namespace {
-    void display() {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
-        switch (menuState) {
-            case MAIN_MENU:
-                framework::drawMainMenu();
-                break;
-            case SETTINGS_MENU:
-                framework::drawSettings();
-                break;
-            case PAUSE_MENU:
-                framework::drawPauseMenu();
-                break;
-            default:
-                framework::drawMainMenu();
-                break;
+    switch (menuState) {
+        case MAIN_MENU:
+            framework::drawMainMenu();
+            break;
+        case SETTINGS_MENU:
+            framework::drawSettings();
+            break;
+        case PAUSE_MENU:
+            framework::drawPauseMenu();
+            break;
+        default:
+            framework::drawMainMenu();
+            break;
+    }
+
+    glutSwapBuffers();
+}
+
+void reshape(int width, int height) {
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, width, height, 0);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+void idle() {
+    framework::update();
+    glutPostRedisplay();
+}
+
+void MouseMove(int x, int y)
+{
+    float logicalX = 0.0f;
+    float logicalY = 0.0f;
+    SolarUI::ScreenToLogical(x, y, logicalX, logicalY);
+    SolarUI::MouseX = logicalX;
+    SolarUI::MouseY = logicalY;
+}
+
+void MouseButton(int button, int state, int x, int y)
+{
+    float logicalX = 0.0f;
+    float logicalY = 0.0f;
+    SolarUI::ScreenToLogical(x, y, logicalX, logicalY);
+
+    SolarUI::MouseX = logicalX;
+    SolarUI::MouseY = logicalY;
+
+    if (button == GLUT_LEFT_BUTTON)
+    {
+        SolarUI::MouseDown = (state == GLUT_DOWN);
+        if (SolarUI::MouseDown)
+        {
+            // put input box code here?
+            return;
         }
-
-        glutSwapBuffers();
     }
+}
 
-    void reshape(int width, int height) {
-        glViewport(0, 0, width, height);
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        gluOrtho2D(0, width, height, 0);
-        glMatrixMode(GL_MODELVIEW);
-    }
-
-    void idle() {
-        framework::update();
-        glutPostRedisplay();
-    }
-
-    void mouseMotion(int x, int y) {
-        SolarUI::MouseX = static_cast<float>(x);
-        SolarUI::MouseY = static_cast<float>(y);
-    }
-
-    void mouseButton(int button, int state, int x, int y) {
-        mouseMotion(x, y);
-
-        if (button == GLUT_LEFT_BUTTON) {
-            SolarUI::MouseDown = (state == GLUT_DOWN);
-            SolarUI::MousePressed = (state == GLUT_DOWN);
-        } else {
-            SolarUI::MouseDown = false;
-        }
-    }
-
-    void keyboard(unsigned char key, int, int) {
-        if (key == 27) {
-            framework::shutdown();
-            exit(0);
-        }
-    }
+void Resize(int width, int height)
+{
+    SolarUI::UpdateViewport(width, height);
 }
 
 int main(int argc, char** argv) {
@@ -76,10 +85,9 @@ int main(int argc, char** argv) {
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutIdleFunc(idle);
-    glutMouseFunc(mouseButton);
-    glutMotionFunc(mouseMotion);
-    glutPassiveMotionFunc(mouseMotion);
-    glutKeyboardFunc(keyboard);
+    glutMouseFunc(MouseButton);
+    glutMotionFunc(MouseMove);
+    glutPassiveMotionFunc(MouseMove);
 
     glutMainLoop();
     return 0;
