@@ -8,7 +8,7 @@ STATE menuState = MAIN_MENU;
 SETSTATE settingState = NONE;
 
 // Main Menu stuff
-SolarUI::Label mainMenuTitle                    ("Main Menu", 50, 50);
+SolarUI::Label mainMenuTitle                    ("3D PacMan", 50, 50);
 SolarUI::Button startButton                     (50, 75, 200, 50, "Start Game");
 SolarUI::Button settingsButton                  (50, 150, 200, 50, "Settings");
 SolarUI::Button MultiplayerSettings             (50, 225, 200, 50, "Multiplayer Settings");
@@ -21,7 +21,7 @@ SolarUI::Button exitButton                      (50, 300, 200, 50, "Exit");
 
 
 // Settings Menu stuff
-SolarUI::Label settingsTitle                    ("Settings", 10.0, 100);
+SolarUI::Label settingsTitle                    ("3D PacMan - Settings", 50, 50);
 SolarUI::Button displaySettings                 (50, 75, 200, 50, "Display");
 SolarUI::Button controlsSettings                (50, 150, 200, 50, "Controls");
 SolarUI::Button audioSettings                   (50, 225, 200, 50, "Audio");
@@ -46,8 +46,8 @@ SolarUI::Label graphicsSettingsTitle            ("Graphics", 600, 100);
 
 /* Graphics Quality Dropdown */
 
-SolarUI::Checkbox showAvatarsCheckbox               (600, 150, 20, 20, "Display Avatars");
-SolarUI::Checkbox showTexturesCheckbox              (600, 200, 20, 20, "Display WallTextures");
+SolarUI::Checkbox showAvatarsCheckbox           (600, 150, 20, 20, "Display Avatars");
+SolarUI::Checkbox showTexturesCheckbox          (600, 200, 20, 20, "Display WallTextures");
 SolarUI::Slider framerateSlider                 (600, 250, 200, 20, "Framerate Limit");
 SolarUI::Checkbox vsyncCheckbox                 (600, 300, 20, 20, "V-Sync");
 SolarUI::Checkbox antiAliasingCheckbox          (600, 350, 20, 20, "Anti-Aliasing");
@@ -64,10 +64,10 @@ SolarUI::Label controlsSettingsTitle                 ("Controls", 300, 100);
     The user can click on a control to change its key binding.
 */
 SolarUI::Slider MouseSensitivitySlider          (300, 150, 200, 20, "Mouse Sensitivity");
-SolarUI::Slider InvertMouseYSlider              (300, 200, 200, 20, "Invert Mouse Y-Axis");
-SolarUI::Checkbox MouseONCheckbox               (300, 250, 20, 20, "Controller Support");
+SolarUI::Checkbox InvertMouseYSlider            (300, 200, 20, 20, "Invert Mouse Y-Axis");
+SolarUI::Checkbox MouseONCheckbox               (300, 250, 20, 20, "Use Mouse?");
 
-// *******************************************************************************
+// ***************************************************************************
 
 
 // Audio Settings stuff
