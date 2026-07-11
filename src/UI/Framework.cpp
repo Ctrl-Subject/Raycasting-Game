@@ -33,25 +33,45 @@ SolarUI::Button backButton                      (50, 450, 200, 50, "Back");
 // Display Settings stuff ********************************************************
 SolarUI::Label displaySettingsTitle             ("Display", 300, 100);
 
-/* Resolution Dropdown */
+SolarUI::DropdownMenu resolution(
+    300,150,200,25,
+    "Resolution",
+{
+    "800x600",
+    "1280x720",
+    "1920x1080",
+    "3840x2160"
+});
 
-SolarUI::Checkbox fullscreenCheckbox            (300, 150, 20, 20, "Fullscreen");
-SolarUI::Checkbox borderlessFullscreenCheckbox  (300, 200, 20, 20, "Borderless Fullscreen");
-SolarUI::Slider gammaSlider                     (300, 250, 200, 20, "Gamma");
-SolarUI::Slider fovSlider                       (300, 300, 200, 20, "Field of View");
+SolarUI::Checkbox fullscreenCheckbox            (300, 200, 20, 20, "Fullscreen");
+SolarUI::Checkbox borderlessFullscreenCheckbox  (300, 250, 20, 20, "Borderless Fullscreen");
+SolarUI::Slider gammaSlider                     (300, 300, 200, 20, "Gamma");
+SolarUI::Slider fovSlider                       (300, 350, 200, 20, "Field of View");
 
-/* Renderer Engine Dropdown */
+SolarUI::DropdownMenu Engine(
+    300,400,200,25,
+    "Engine",
+{
+    "RCUT2.5-PR1"
+});
 
 SolarUI::Label graphicsSettingsTitle            ("Graphics", 600, 100);
 
-/* Graphics Quality Dropdown */
+SolarUI::DropdownMenu GraphicsQuality(
+    600,150,200,25,
+    "Graphics Quality",
+{
+    "High",
+    "Medium",
+    "Low"
+});
 
-SolarUI::Checkbox showAvatarsCheckbox           (600, 150, 20, 20, "Display Avatars");
-SolarUI::Checkbox showTexturesCheckbox          (600, 200, 20, 20, "Display WallTextures");
-SolarUI::Slider framerateSlider                 (600, 250, 200, 20, "Framerate Limit");
-SolarUI::Checkbox vsyncCheckbox                 (600, 300, 20, 20, "V-Sync");
-SolarUI::Checkbox antiAliasingCheckbox          (600, 350, 20, 20, "Anti-Aliasing");
-SolarUI::Checkbox motionBlurCheckbox            (600, 400, 20, 20, "Motion Blur");
+SolarUI::Checkbox showAvatarsCheckbox           (600, 200, 20, 20, "Display Avatars");
+SolarUI::Checkbox showTexturesCheckbox          (600, 250, 20, 20, "Display WallTextures");
+SolarUI::Slider framerateSlider                 (600, 300, 200, 20, "Framerate Limit");
+SolarUI::Checkbox vsyncCheckbox                 (600, 350, 20, 20, "V-Sync");
+SolarUI::Checkbox antiAliasingCheckbox          (600, 400, 20, 20, "Anti-Aliasing");
+SolarUI::Checkbox motionBlurCheckbox            (600, 450, 20, 20, "Motion Blur");
 
 // *******************************************************************************
 
@@ -173,6 +193,9 @@ namespace framework {
         vsyncCheckbox               .Update();
         antiAliasingCheckbox        .Update();
         motionBlurCheckbox          .Update();
+        resolution                  .Update();
+        GraphicsQuality             .Update();
+        Engine                      .Update();
 
         MouseSensitivitySlider      .Update();
         InvertMouseYSlider          .Update();
@@ -244,6 +267,7 @@ namespace framework {
         borderlessFullscreenCheckbox.Draw();
         gammaSlider.Draw();
         fovSlider.Draw();
+        resolution.Draw();
         
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         graphicsSettingsTitle.Draw();
@@ -254,6 +278,8 @@ namespace framework {
         vsyncCheckbox.Draw();
         antiAliasingCheckbox.Draw();
         motionBlurCheckbox.Draw();
+        GraphicsQuality.Draw();
+        Engine.Draw();
 
     }
 

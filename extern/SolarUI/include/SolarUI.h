@@ -1,8 +1,18 @@
+/*
+    SolarUI
+    Lightweight UI framework for FreeGLUT/OpenGL
+
+    Copyright (c) 2026 Ellie-Mae Dawson
+
+    Licensed under the MIT License
+*/
 #ifndef SOLAR_UI_H
 #define SOLAR_UI_H
 
 #include <GL/freeglut.h>
 #include <string>
+#include <vector>
+#include <initializer_list>
 
 namespace SolarUI
 {
@@ -144,6 +154,47 @@ namespace SolarUI
         std::string Input();  // Returns data if submitted, clears submitted flag
         void Clear();
         bool IsSubmitted() const;
+    };
+
+    struct DropdownMenu
+    {
+        float X, Y, W, H;
+
+        bool Open;
+        int SelectedIndex;
+
+        Label Title;
+
+        std::vector<const char*> Options;
+
+        DropdownMenu(
+            float x,
+            float y,
+            float w,
+            float h,
+            const char* text,
+            std::initializer_list<const char*> options)
+            : X(x),
+            Y(y),
+            W(w),
+            H(h),
+            Open(false),
+            SelectedIndex(0),
+            Title(text, x, y),
+            Options(options)
+        {}
+
+        void Draw();
+        void Update();
+        bool Contains(int mx, int my);
+
+        int GetIndex() const;
+        const char* GetValue() const;
+
+        operator int() const
+        {
+            return SelectedIndex;
+        }
     };
 }
 
