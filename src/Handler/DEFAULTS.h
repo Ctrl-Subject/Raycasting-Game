@@ -32,3 +32,8 @@
 #define DEFAULT_LOOK_RIGHT              "GLUT_KEY_RIGHT"
 #define DEFAULT_LOOK_UP                 "GLUT_KEY_UP"
 #define DEFAULT_LOOK_DOWN               "GLUT_KEY_DOWN"
+
+#define DEFAULT_MAS_VOL                 1.0f
+#define DEFAULT_LOB_VOL                 1.0f
+#define DEFAULT_GAME_VOL                1.0f
+#define DEFAULT_SFX_VOL                 1.0f

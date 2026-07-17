@@ -37,7 +37,12 @@ typedef enum {
     CFG_LOOK_LEFT,
     CFG_LOOK_RIGHT,
     CFG_LOOK_UP,
-    CFG_LOOK_DOWN
+    CFG_LOOK_DOWN,
+
+    CFG_MASTER_VOLUME,
+    CFG_LOBBY_VOLUME,
+    CFG_GAME_VOLUME,
+    CFG_SFX_VOLUME
 } ConfigKey;
 
 // This converts each line into the enum ConfigKey
@@ -70,6 +75,11 @@ static ConfigKey get_key(const char *key)
     if (strcmp(key, "look_right") == 0) return CFG_LOOK_RIGHT;
     if (strcmp(key, "look_up") == 0) return CFG_LOOK_UP;
     if (strcmp(key, "look_down") == 0) return CFG_LOOK_DOWN;
+    
+    if (strcmp(key, "master_volume") == 0) return CFG_MASTER_VOLUME;
+    if (strcmp(key, "lobby_volume") == 0) return CFG_LOBBY_VOLUME;
+    if (strcmp(key, "game_volume") == 0) return CFG_GAME_VOLUME;
+    if (strcmp(key, "effects_volume") == 0) return CFG_SFX_VOLUME;
 
     return CFG_UNKNOWN; // if no keys are found 
 }
@@ -226,7 +236,7 @@ static int Load(void)
                 break;
 
             case CFG_MOUSE_SENSITIVITY:
-                MOUSE_SENSITIVITY_SETTING = (float)atof(value);
+                MOUSE_SENSITIVITY_SETTING = ((float)atof(value) - 1.0f) / 119.0f;;
                 break;
 
             case CFG_INVERT_MOUSE_Y:
@@ -264,6 +274,22 @@ static int Load(void)
             case CFG_LOOK_DOWN:
                 LOOK_DOWN = ParseKey(value);
                 break;
+            
+            case CFG_MASTER_VOLUME:
+                MASTER_VOL = (float)atof(value);
+                break;
+            
+            case CFG_LOBBY_VOLUME:
+                LOBBY_VOL = (float)atof(value);
+                break;
+            
+            case CFG_GAME_VOLUME:
+                GAME_VOL = (float)atof(value);
+                break;
+                
+            case CFG_SFX_VOLUME:
+                SFX_VOL = (float)atof(value);
+                break;
 
             default:
                 printf("Unknown setting: %s\n", key);
@@ -299,7 +325,7 @@ static int Save(void)
     fprintf(file, "engine=%s\n", ENGINE_TYPE);
     fprintf(file, "avatarshow=%s\n", AVATARSHOW_SETTING ? "true" : "false");
     fprintf(file, "textureshow=%s\n", TEXTURESHOW_SETTING ? "true" : "false");
-    fprintf(file, "framerate=%d\n", FRAMERATE_SETTING);
+    fprintf(file, "framerate=%d\n", (1.0f + FRAMERATE_SETTING * 119.0f);
     fprintf(file, "vsync=%s\n", VSYNC_SETTING ? "true" : "false");
     fprintf(file, "antialiasing=%s\n", ANTIALIASING_SETTING ? "true" : "false");
     fprintf(file, "motionblur=%s\n\n", MOTIONBLUR_SETTING ? "true" : "false");
@@ -318,6 +344,13 @@ static int Save(void)
     fprintf(file, "look_right=%s\n", KeyToString(LOOK_RIGHT));
     fprintf(file, "look_up=%s\n", KeyToString(LOOK_UP));
     fprintf(file, "look_down=%s\n", KeyToString(LOOK_DOWN));
+
+    
+    fprintf(file, "# Volume Settings\n");
+    fprintf(file, "master_volume=%s\n", KeyToString(MASTER_VOL));
+    fprintf(file, "lobby_volume=%s\n", KeyToString(LOBBY_VOL));
+    fprintf(file, "game_volume=%s\n", KeyToString(GAME_VOL));
+    fprintf(file, "effects_volume=%s\n", KeyToString(SFX_VOL));
 
     fclose(file);
     return 0;
@@ -364,6 +397,12 @@ static int Reset(void)
     fprintf(file, "look_right=%s\n", DEFAULT_LOOK_RIGHT);
     fprintf(file, "look_up=%s\n", DEFAULT_LOOK_UP);
     fprintf(file, "look_down=%s\n", DEFAULT_LOOK_DOWN);
+    
+    fprintf(file, "# Volume Settings\n");
+    fprintf(file, "master_volume=%s\n", DEFAULT_MAS_VOL);
+    fprintf(file, "lobby_volume=%s\n",  DEFAULT_LOB_VOL);
+    fprintf(file, "game_volume=%s\n",   DEFAULT_GAME_VOL);
+    fprintf(file, "effects_volume=%s\n",DEFAULT_SFX_VOL);
 
     fclose(file);
     return 0;

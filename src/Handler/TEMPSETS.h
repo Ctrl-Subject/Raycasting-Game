@@ -16,7 +16,7 @@ extern float GAMMA_SETTING;
 extern float FOV_SETTING;
 
 // Graphics Settings
-extern bool ENGINE_TYPE;
+extern int  ENGINE_TYPE;
 extern bool AVATARSHOW_SETTING;
 extern bool TEXTURESHOW_SETTING;
 extern int  FRAMERATE_SETTING;
@@ -38,6 +38,12 @@ extern int LOOK_LEFT;
 extern int LOOK_RIGHT;
 extern int LOOK_UP;
 extern int LOOK_DOWN;
+
+// Audio Settings
+extern float MASTER_VOL;
+extern float GAME_VOL;
+extern float LOBBY_VOL;
+extern float SFX_VOL;
 
 #ifdef __cplusplus
 }

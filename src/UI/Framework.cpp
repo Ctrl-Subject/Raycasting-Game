@@ -68,15 +68,6 @@ SolarUI::DropdownMenu Engine(
 
 SolarUI::Label graphicsSettingsTitle            ("Graphics", 600, 100);
 
-SolarUI::DropdownMenu GraphicsQuality(
-    600,150,200,25,
-    "Graphics Quality",
-{
-    "High",
-    "Medium",
-    "Low"
-});
-
 SolarUI::Checkbox showAvatarsCheckbox           (600, 200, 20, 20, "Display Avatars");
 SolarUI::Checkbox showTexturesCheckbox          (600, 250, 20, 20, "Display WallTextures");
 SolarUI::Slider framerateSlider                 (600, 300, 200, 20, "Framerate Limit");
@@ -220,6 +211,36 @@ namespace
                 break;
         }
     }
+
+    int loadValues()
+    {
+        // Loads settings
+        // Display Settings
+        resolution                  .SelectedIndex  =   WINDOW_RESOLUTION;
+        fullscreenCheckbox          .Checked        =   FULL_SCREEN_SETTING;
+        borderlessFullscreenCheckbox.Checked        =   BORDERLESS_SETTING;
+        gammaSlider                 .Value          =   GAMMA_SETTING;
+        fovSlider                   .Value          =   FOV_SETTING;
+
+        //Graphics Settings
+        Engine                      .SelectedIndex  =   ENGINE_TYPE;
+        showAvatarsCheckbox         .Checked        =   AVATARSHOW_SETTING;
+        showTexturesCheckbox        .Checked        =   TEXTURESHOW_SETTING;
+        framerateSlider             .Value          =   FRAMERATE_SETTING;
+        vsyncCheckbox               .Checked        =   VSYNC_SETTING;
+        antiAliasingCheckbox        .Checked        =   ANTIALIASING_SETTING;
+        motionBlurCheckbox          .Checked        =   MOTIONBLUR_SETTING;
+
+        MouseSensitivitySlider      .Value          =   MOUSE_SENSITIVITY_SETTING;
+        InvertMouseYSlider          .Checked        =   INVERT_MOUSE_Y_SETTING;
+        
+        masterVolumeSlider          .Value          =   MASTER_VOL;
+        lobbyMusicVolumeSlider      .Value          =   LOBBY_VOL;
+        inGameMusicVolumeSlider     .Value          =   GAME_VOL;
+        sfxVolumeSlider             .Value          =   SFX_VOL;
+
+        return 0;
+    }
 }
 
 namespace framework 
@@ -231,6 +252,7 @@ namespace framework
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
 
         gHandler.Settings.Load();
+        loadValues();
         
         Engine.SelectedIndex = ENGINE_TYPE;
         WinWidth     =   WinWidthSizes[WINDOW_RESOLUTION];
@@ -254,7 +276,6 @@ namespace framework
         antiAliasingCheckbox        .Update();
         motionBlurCheckbox          .Update();
         resolution                  .Update();
-        GraphicsQuality             .Update();
         Engine                      .Update();
 
         MouseSensitivitySlider      .Update();
@@ -265,6 +286,7 @@ namespace framework
         lobbyMusicVolumeSlider      .Update();
         inGameMusicVolumeSlider     .Update();
         sfxVolumeSlider             .Update();
+
         handleMainMenuClicks();
         SolarUI::MousePressed = false;
     }
@@ -286,7 +308,7 @@ namespace framework
 
     void Settings::Reset() 
     {
-        return;
+        gHandler.Settings.Reset();
     }
 
     void resize(int width, int height)
@@ -357,7 +379,6 @@ namespace framework
         vsyncCheckbox.Draw();
         antiAliasingCheckbox.Draw();
         motionBlurCheckbox.Draw();
-        GraphicsQuality.Draw();
         Engine.Draw();
     }
 
