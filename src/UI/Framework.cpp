@@ -1,8 +1,18 @@
 #include "Framework.h"
+#include "../Handler/Handler.h"
+#include "../../extern/SolarUI/include/SolarUI.h"
 
-#include <SolarUI.h>
 #include <iostream>
 #include <cstdlib>
+#include <vector>
+
+//Window states Stuff
+std::vector<int> WinWidthSizes = {800, 1280, 1920};
+std::vector<int> WinHeightSizes = {600, 720, 1080};
+
+
+int framework::WinWidth;
+int framework::WinHeight;
 
 STATE menuState = MAIN_MENU;
 SETSTATE settingState = NONE;
@@ -19,6 +29,7 @@ SolarUI::Button exitButton                      (50, 300, 200, 50, "Exit");
 // =          settings stuff         =
 // ===================================
 
+framework::Settings Settings;
 
 // Settings Menu stuff
 SolarUI::Label settingsTitle                    ("3D PacMan - Settings", 50, 50);
@@ -83,6 +94,9 @@ SolarUI::Label controlsSettingsTitle                 ("Controls", 300, 100);
     A table that lists all the controls and their current key bindings.
     The user can click on a control to change its key binding.
 */
+
+SolarUI::Label Controls_NA                   ("W = Forward, \n A = Strafe Left, \n S = Back, \n D = Strafe Right, \n Mouse for looking", 500, 250);
+
 SolarUI::Slider MouseSensitivitySlider          (300, 150, 200, 20, "Mouse Sensitivity");
 SolarUI::Checkbox InvertMouseYSlider            (300, 200, 20, 20, "Invert Mouse Y-Axis");
 SolarUI::Checkbox MouseONCheckbox               (300, 250, 20, 20, "Use Mouse?");
@@ -98,6 +112,9 @@ SolarUI::Slider inGameMusicVolumeSlider         (300, 250, 200, 20, "Game Music 
 SolarUI::Slider sfxVolumeSlider                 (300, 300, 200, 20, "Sound Effects Volume");
 
 // ***************************************************************************
+
+// Multiplayer Settings stuff *******************************************************
+SolarUI::Label Multiplayer_NA                   ("I'm sorry, but multiplayer hasn't been implemented yet", 500, 150);
 
 
 // Help Menu stuff ***************************************************************
@@ -115,71 +132,114 @@ SolarUI::Label helpTitle                        ("Help", 300, 100);
 
 // Implementation of the framework functions and methods
 
-namespace {
-    void handleMainMenuClicks() {
-        switch(menuState) {
+namespace 
+{
+    void handleMainMenuClicks() 
+    {
+        switch(menuState) 
+        {
             case MAIN_MENU:
-                if (SolarUI::MousePressed && startButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed && startButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Start Game clicked\n";
                     menuState = LOBBY_MENU;
                 }
 
-                if (SolarUI::MousePressed && settingsButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed && settingsButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Settings clicked\n";
                     menuState = SETTINGS_MENU;
                 }
 
-                if (SolarUI::MousePressed && exitButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed & MultiplayerSettings.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY)))
+                {
+                    std::cout << "Multiplayer Settings Pressed";
+                    menuState = MULTPLAY_SETTINGS_MENU;
+                }
+
+                if (SolarUI::MousePressed && exitButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Exit clicked\n";
                     std::exit(0);
                 }
+                
                 break;
 
             case SETTINGS_MENU:
-                if (SolarUI::MousePressed && backButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed && backButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Back clicked\n";
                     menuState = MAIN_MENU;
                     settingState = NONE;
                 }
 
-                if (SolarUI::MousePressed && displaySettings.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed && displaySettings.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Display Settings clicked\n";
                     settingState = DISPLAY_SETTINGS_MENU;
                 }
 
-                if (SolarUI::MousePressed && controlsSettings.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed && controlsSettings.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Controls Settings clicked\n";
                     settingState = CONTROLS_SETTINGS_MENU;
                 }
 
-                if (SolarUI::MousePressed && audioSettings.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed && audioSettings.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Audio Settings clicked\n";
                     settingState = AUDIO_SETTINGS_MENU;
                 }
 
-                if (SolarUI::MousePressed && helpButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) {
+                if (SolarUI::MousePressed && saveButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
+                    std::cout << "Save clicked\n";
+                    Settings.Save();
+                }
+
+                if (SolarUI::MousePressed && helpButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
                     std::cout << "Help clicked\n";
                     settingState = HELP_MENU;
                 }
-
                 break;
+            
+            case MULTPLAY_SETTINGS_MENU:
+                if (SolarUI::MousePressed && backButton.Contains(static_cast<int>(SolarUI::MouseX), static_cast<int>(SolarUI::MouseY))) 
+                {
+                    std::cout << "Back clicked\n";
+                    menuState = MAIN_MENU;
+                    settingState = NONE;
+                }
+                break;
+
             case PAUSE_MENU:
                 break;
+
             default:
                 break;
         }
     }
 }
 
-namespace framework {
-
-    void init() {
+namespace framework 
+{
+    void init() 
+    {
         // Sets defaults for the UI framework, initializes necessary components
         SolarUI::Init();
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
+
+        gHandler.Settings.Load();
+        
+        Engine.SelectedIndex = ENGINE_TYPE;
+        WinWidth     =   WinWidthSizes[WINDOW_RESOLUTION];
+        WinHeight    =   WinHeightSizes[WINDOW_RESOLUTION];
+
     }
 
-    void update() {
+    void update() 
+    {
         // Update the UI framework state, handle input, etc.
         SolarUI::Update();
         // Update all UI elements based on the current state
@@ -209,22 +269,39 @@ namespace framework {
         SolarUI::MousePressed = false;
     }
 
-    void shutdown() {
+    void shutdown() 
+    {
         // Cleanup code here
         return;
     }
 
-    void save() {
+    void Settings::Save() 
+    {
         // Save state code here
+        WinHeight = WinHeightSizes[resolution.GetIndex()];
+        WinWidth  = WinWidthSizes [resolution.GetIndex()];
+
         return;
     }
 
-    Framework::Framework() {
+    void Settings::Reset() 
+    {
+        return;
+    }
+
+    void resize(int width, int height)
+    {
+        glutReshapeWindow(width, height);
+    }
+
+    Framework::Framework() 
+    {
         // Constructor implementation
         init();
     }
 
-    void drawSettings() {
+    void drawSettings() 
+    {
         // Code to draw the settings menu
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         settingsTitle.Draw();
@@ -236,7 +313,8 @@ namespace framework {
         backButton.Draw();
         helpButton.Draw();
 
-        switch (settingState) {
+        switch (settingState) 
+        {
             case DISPLAY_SETTINGS_MENU:
                 drawDisplaySettings();
                 break;
@@ -258,7 +336,8 @@ namespace framework {
         }
     }
 
-    void drawDisplaySettings() {
+    void drawDisplaySettings() 
+    {
         // Code to draw the display settings
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         displaySettingsTitle.Draw();
@@ -280,10 +359,10 @@ namespace framework {
         motionBlurCheckbox.Draw();
         GraphicsQuality.Draw();
         Engine.Draw();
-
     }
 
-    void drawControlsSettings() {
+    void drawControlsSettings() 
+    {
         // Code to draw the controls settings
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         controlsSettingsTitle.Draw();
@@ -291,9 +370,13 @@ namespace framework {
         MouseSensitivitySlider.Draw();
         InvertMouseYSlider.Draw();
         MouseONCheckbox.Draw();
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
+        Controls_NA.Draw();
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_10);
     }
 
-    void drawAudioSettings() {
+    void drawAudioSettings() 
+    {
         // Code to draw the audio settings
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         audioSettingsTitle.Draw();
@@ -304,14 +387,16 @@ namespace framework {
         sfxVolumeSlider.Draw();
     }
 
-    void drawHelpMenu() {
+    void drawHelpMenu() 
+    {
         // Code to draw the help menu
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         helpTitle.Draw();
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_10);
     }
 
-    void drawMainMenu() {
+    void drawMainMenu() 
+    {
         // Code to draw the main menu
         SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
         mainMenuTitle.Draw();
@@ -322,7 +407,16 @@ namespace framework {
         exitButton.Draw();
     }
 
-    void drawPauseMenu() {
+    void drawMultiplayerSetttings()
+    {
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_24);
+        Multiplayer_NA.Draw();
+        SolarUI::SetFont(GLUT_BITMAP_TIMES_ROMAN_10);
+        backButton.Draw();
+    }
+
+    void drawPauseMenu() 
+    {
         // Code to draw the pause menu
     }
 }

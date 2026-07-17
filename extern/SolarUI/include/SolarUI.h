@@ -161,7 +161,7 @@ namespace SolarUI
         float X, Y, W, H;
 
         bool Open;
-        int SelectedIndex;
+        int SelectedIndex = 0;
 
         Label Title;
 
@@ -173,13 +173,14 @@ namespace SolarUI
             float w,
             float h,
             const char* text,
-            std::initializer_list<const char*> options)
+            std::initializer_list<const char*> options
+        )
             : X(x),
             Y(y),
             W(w),
             H(h),
             Open(false),
-            SelectedIndex(0),
+            SelectedIndex(SelectedIndex),
             Title(text, x, y),
             Options(options)
         {}
