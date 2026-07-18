@@ -299,11 +299,35 @@ namespace framework
 
     void Settings::Save() 
     {
-        // Save state code here
+        // Write current UI state back into the settings globals
+        WINDOW_RESOLUTION         = resolution.GetIndex();
+        FULL_SCREEN_SETTING       = fullscreenCheckbox.Checked;
+        BORDERLESS_SETTING        = borderlessFullscreenCheckbox.Checked;
+        GAMMA_SETTING             = gammaSlider.Value;
+        FOV_SETTING               = fovSlider.Value;
+ 
+        ENGINE_TYPE               = Engine.GetIndex();
+        AVATARSHOW_SETTING        = showAvatarsCheckbox.Checked;
+        TEXTURESHOW_SETTING       = showTexturesCheckbox.Checked;
+        FRAMERATE_SETTING         = framerateSlider.Value;
+        VSYNC_SETTING             = vsyncCheckbox.Checked;
+        ANTIALIASING_SETTING      = antiAliasingCheckbox.Checked;
+        MOTIONBLUR_SETTING        = motionBlurCheckbox.Checked;
+ 
+        MOUSE_SENSITIVITY_SETTING = MouseSensitivitySlider.Value;
+        INVERT_MOUSE_Y_SETTING    = InvertMouseYSlider.Checked;
+ 
+        MASTER_VOL                = masterVolumeSlider.Value;
+        LOBBY_VOL                 = lobbyMusicVolumeSlider.Value;
+        GAME_VOL                  = inGameMusicVolumeSlider.Value;
+        SFX_VOL                   = sfxVolumeSlider.Value;
+ 
+        // Keep window size in sync with the resolution the user picked
         WinHeight = WinHeightSizes[resolution.GetIndex()];
         WinWidth  = WinWidthSizes [resolution.GetIndex()];
-
-        return;
+ 
+        // Now actually write these to Config.cfg
+        gHandler.Settings.Save();
     }
 
     void Settings::Reset() 

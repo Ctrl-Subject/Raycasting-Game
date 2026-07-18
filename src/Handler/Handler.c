@@ -156,7 +156,7 @@ static const char *KeyToString(int key)
 // Load the Settings from the config file
 static int Load(void) 
 {
-    FILE *file = fopen("Config.cfg", "r");
+    FILE *file = fopen("src/Handler/Config.cfg", "r");
     
     // Checker to ensure the file has been opened to read
     if(file == NULL) 
@@ -306,7 +306,7 @@ static int Load(void)
 // saves settings to the config file
 static int Save(void)
 {
-    FILE *file = fopen("Config.cfg", "w");
+    FILE *file = fopen("src/Handler/Config.cfg", "w");
 
     if (file == NULL)
     {
@@ -315,17 +315,17 @@ static int Save(void)
     }
 
     fprintf(file, "# Display Settings\n");
-    fprintf(file, "resolution=%s\n", WINDOW_RESOLUTION);
+    fprintf(file, "resolution=%d\n", WINDOW_RESOLUTION);
     fprintf(file, "fullscreen=%s\n", FULL_SCREEN_SETTING ? "true" : "false");
     fprintf(file, "borderless=%s\n", BORDERLESS_SETTING ? "true" : "false");
     fprintf(file, "gamma=%f\n", GAMMA_SETTING);
     fprintf(file, "fov=%f\n\n", FOV_SETTING);
 
     fprintf(file, "# Graphics Settings\n");
-    fprintf(file, "engine=%s\n", ENGINE_TYPE);
+    fprintf(file, "engine=%d\n", ENGINE_TYPE);
     fprintf(file, "avatarshow=%s\n", AVATARSHOW_SETTING ? "true" : "false");
     fprintf(file, "textureshow=%s\n", TEXTURESHOW_SETTING ? "true" : "false");
-    fprintf(file, "framerate=%d\n", (1.0f + FRAMERATE_SETTING * 119.0f);
+    fprintf(file, "framerate=%d\n", (int)(1.0f + FRAMERATE_SETTING * 119.0f));
     fprintf(file, "vsync=%s\n", VSYNC_SETTING ? "true" : "false");
     fprintf(file, "antialiasing=%s\n", ANTIALIASING_SETTING ? "true" : "false");
     fprintf(file, "motionblur=%s\n\n", MOTIONBLUR_SETTING ? "true" : "false");
@@ -347,10 +347,10 @@ static int Save(void)
 
     
     fprintf(file, "# Volume Settings\n");
-    fprintf(file, "master_volume=%s\n", KeyToString(MASTER_VOL));
-    fprintf(file, "lobby_volume=%s\n", KeyToString(LOBBY_VOL));
-    fprintf(file, "game_volume=%s\n", KeyToString(GAME_VOL));
-    fprintf(file, "effects_volume=%s\n", KeyToString(SFX_VOL));
+    fprintf(file, "master_volume=%f\n", MASTER_VOL);
+    fprintf(file, "lobby_volume=%f\n", LOBBY_VOL);
+    fprintf(file, "game_volume=%f\n", GAME_VOL);
+    fprintf(file, "effects_volume=%f\n", SFX_VOL);
 
     fclose(file);
     return 0;
@@ -359,7 +359,7 @@ static int Save(void)
 // resets the config file
 static int Reset(void) 
 {
-    FILE *file = fopen("Config.cfg", "w");
+    FILE *file = fopen("src/Handler/Config.cfg", "w");
 
     if (file == NULL)
     {
@@ -368,14 +368,14 @@ static int Reset(void)
     }
 
     fprintf(file, "# Display Settings\n");
-    fprintf(file, "resolution=%s\n", DEFAULT_RESOLUTION_SETTING);
+    fprintf(file, "resolution=%d\n", DEFAULT_RESOLUTION_SETTING);
     fprintf(file, "fullscreen=%s\n", DEFAULT_FULL_SCREEN_SETTING);
     fprintf(file, "borderless=%s\n", DEFAULT_BORDERLESS_SETTING);
     fprintf(file, "gamma=%f\n", DEFAULT_GAMMA_SETTING);
     fprintf(file, "fov=%f\n\n", DEFAULT_FOV_SETTING);
 
     fprintf(file, "# Graphics Settings\n");
-    fprintf(file, "engine=%s\n", DEFAULT_ENGINE_SETTING);
+    fprintf(file, "engine=%d\n", DEFAULT_ENGINE_SETTING);
     fprintf(file, "avatarshow=%s\n", DEFAULT_AVATARSHOW_SETTING);
     fprintf(file, "textureshow=%s\n", DEFAULT_TEXTURESHOW_SETTING);
     fprintf(file, "framerate=%d\n", DEFAULT_FRAMERATE_SETTING);
@@ -399,10 +399,10 @@ static int Reset(void)
     fprintf(file, "look_down=%s\n", DEFAULT_LOOK_DOWN);
     
     fprintf(file, "# Volume Settings\n");
-    fprintf(file, "master_volume=%s\n", DEFAULT_MAS_VOL);
-    fprintf(file, "lobby_volume=%s\n",  DEFAULT_LOB_VOL);
-    fprintf(file, "game_volume=%s\n",   DEFAULT_GAME_VOL);
-    fprintf(file, "effects_volume=%s\n",DEFAULT_SFX_VOL);
+    fprintf(file, "master_volume=%f\n", DEFAULT_MAS_VOL);
+    fprintf(file, "lobby_volume=%f\n",  DEFAULT_LOB_VOL);
+    fprintf(file, "game_volume=%f\n",   DEFAULT_GAME_VOL);
+    fprintf(file, "effects_volume=%f\n",DEFAULT_SFX_VOL);
 
     fclose(file);
     return 0;
