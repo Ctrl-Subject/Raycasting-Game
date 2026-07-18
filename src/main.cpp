@@ -3,6 +3,7 @@
 #include "UI/Framework.h"
 
 void display() {
+    framework::resize(framework::WinWidth, framework::WinHeight);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -13,6 +14,9 @@ void display() {
             break;
         case SETTINGS_MENU:
             framework::drawSettings();
+            break;
+        case MULTPLAY_SETTINGS_MENU:
+            framework::drawMultiplayerSetttings();
             break;
         case PAUSE_MENU:
             framework::drawPauseMenu();
@@ -31,6 +35,7 @@ void reshape(int width, int height) {
     glLoadIdentity();
     gluOrtho2D(0, width, height, 0);
     glMatrixMode(GL_MODELVIEW);
+    framework::resize(framework::WinWidth, framework::WinHeight);
 }
 
 void idle() {
@@ -65,11 +70,6 @@ void MouseButton(int button, int state, int x, int y)
             return;
         }
     }
-}
-
-void Resize(int width, int height)
-{
-    SolarUI::UpdateViewport(width, height);
 }
 
 int main(int argc, char** argv) {
