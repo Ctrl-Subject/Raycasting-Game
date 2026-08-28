@@ -4,7 +4,6 @@
       "name": "Win32",
       "includePath": [
         "${workspaceFolder}/include",
-        "${workspaceFolder}/extern/freeglut/include",
         "${workspaceFolder}/src"
       ],
       "cppStandard": "c++17",

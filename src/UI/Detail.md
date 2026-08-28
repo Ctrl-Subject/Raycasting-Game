@@ -3,3 +3,16 @@ to see a useable user UI,
 settings,
 lobby,
 etc
+
+src/
+├── Handler/
+│   ├── Handler.c
+│   ├── Handler.h
+│   ├── TEMPSETS.c
+│   ├── TEMPSETS.h
+│   ├── Config.cfg (saved settings file)
+│   └── DEFAULTS.h
+│
+└── UI/
+    ├── Framework.cpp
+    └── Framework.h

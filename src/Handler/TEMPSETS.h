@@ -1,4 +1,4 @@
-#ifndef DEFAULT_SETTINGS_H_
+#ifndef DEFAULT_SETTING_H_
 #define DEFAULT_SETTINGS_H_
 
 #ifdef __cplusplus
@@ -26,7 +26,9 @@ extern bool MOTIONBLUR_SETTING;
 
 // Input Settings
 extern float MOUSE_SENSITIVITY_SETTING;
+extern bool INVERT_MOUSE_X_SETTING;
 extern bool INVERT_MOUSE_Y_SETTING;
+extern bool USE_MOUSE_SETTING;
 
 // Controls Keys
 extern int MOVE_FORWARD;

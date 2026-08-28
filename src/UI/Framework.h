@@ -1,56 +1,65 @@
-#pragma once
+#ifndef FRAMEWORK_H_
+#define FRAMEWORK_H_
 
 #include "../Handler/TEMPSETS.h"
-// MenuStatum `
-enum STATE {
-    MAIN_MENU,
-    SETTINGS_MENU,
-    MULTPLAY_SETTINGS_MENU,
-    PAUSE_MENU,
-    LOBBY_MENU
-};
 
-enum SETSTATE { //substate when in settings menu. preset to NONE
-    NONE,
-    DISPLAY_SETTINGS_MENU,
-    CONTROLS_SETTINGS_MENU,
-    AUDIO_SETTINGS_MENU,
-    HELP_MENU
-};
+// ==================================================
+// Framework
+// ==================================================
 
-extern STATE menuState;
-extern SETSTATE settingState;
-
-// namespace
-namespace framework {
-
+namespace framework
+{
     extern int WinWidth;
     extern int WinHeight;
+
+    // --------------------------------------------------
+    // Lifecycle
+    // --------------------------------------------------
 
     void init();
     void shutdown();
     void update();
     void resize(int width, int height);
 
+
+    // --------------------------------------------------
+    // Screen drawing / visibility
+    // --------------------------------------------------
+
+    void drawMainMenu();
+
     void drawSettings();
-    void drawMultiplayerSetttings();
+
     void drawDisplaySettings();
     void drawControlsSettings();
     void drawAudioSettings();
     void drawHelpMenu();
 
-    void drawMainMenu();
     void drawPauseMenu();
-    void drawLobby();
 
-    struct Framework {
-        Framework();
-    };
 
-    struct Settings {
+    // --------------------------------------------------
+    // Settings
+    // --------------------------------------------------
+
+    struct Settings
+    {
         bool AreSettingSaved = false;
+
         bool Load();
         void Save();
         void Reset();
     };
+
+
+    // --------------------------------------------------
+    // Framework object
+    // --------------------------------------------------
+
+    struct Framework
+    {
+        Framework();
+    };
 }
+
+#endif

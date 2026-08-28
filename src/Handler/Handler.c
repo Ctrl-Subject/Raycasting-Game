@@ -7,6 +7,43 @@
 #include <stdbool.h>
 #include <string.h>
 #include <GL/freeglut.h>
+#include <windows.h>
+
+// Works out the full path to Config.cfg from the running
+// executable's own location, rather than the current working
+// directory. The working directory depends on how main.exe was
+// launched (terminal, double-click, a shortcut, an IDE run
+// config, ...), so a path relative to it breaks silently in some
+// of those cases. Config.cfg lives next to main.exe at the
+// project root, so this always finds it regardless of how the
+// program was started.
+static void GetConfigPath(char *outPath, size_t outSize)
+{
+    char exePath[MAX_PATH];
+
+    DWORD length = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+
+    if (length == 0 || length == MAX_PATH)
+    {
+        snprintf(outPath, outSize, "src\\Handler\\Config.cfg");
+        return;
+    }
+
+    // Strip the executable filename, leaving the origin directory.
+    char *lastSlash = strrchr(exePath, '\\');
+
+    if (lastSlash != NULL)
+    {
+        *(lastSlash + 1) = '\0';
+    }
+    else
+    {
+        exePath[0] = '\0';
+    }
+
+    // Add the Handler directory.
+    snprintf(outPath, outSize, "%ssrc\\Handler\\Config.cfg", exePath);
+}
 
 // This enumurator is to say which possible settings are in the config file
 typedef enum {
@@ -27,7 +64,9 @@ typedef enum {
     CFG_MOTIONBLUR,
 
     CFG_MOUSE_SENSITIVITY,
+    CFG_INVERT_MOUSE_X,
     CFG_INVERT_MOUSE_Y,
+    CFG_USE_MOUSE,
 
     CFG_MOVE_FORWARD,
     CFG_MOVE_BACK,
@@ -64,7 +103,9 @@ static ConfigKey get_key(const char *key)
     if (strcmp(key, "motionblur") == 0) return CFG_MOTIONBLUR;
 
     if (strcmp(key, "mouse_sensitivity") == 0) return CFG_MOUSE_SENSITIVITY;
+    if (strcmp(key, "invert_mouse_x") == 0) return CFG_INVERT_MOUSE_X;
     if (strcmp(key, "invert_mouse_y") == 0) return CFG_INVERT_MOUSE_Y;
+    if (strcmp(key, "use_mouse") == 0) return CFG_USE_MOUSE;
 
     if (strcmp(key, "move_forward") == 0) return CFG_MOVE_FORWARD;
     if (strcmp(key, "move_back") == 0) return CFG_MOVE_BACK;
@@ -156,7 +197,10 @@ static const char *KeyToString(int key)
 // Load the Settings from the config file
 static int Load(void) 
 {
-    FILE *file = fopen("src/Handler/Config.cfg", "r");
+    char configPath[MAX_PATH + 32];
+    GetConfigPath(configPath, sizeof(configPath));
+
+    FILE *file = fopen(configPath, "r");
     
     // Checker to ensure the file has been opened to read
     if(file == NULL) 
@@ -212,8 +256,26 @@ static int Load(void)
                 break;
 
             case CFG_ENGINESET:
-                ENGINE_TYPE = (int)atof(value);
+            {
+                int parsedEngine = (int)atof(value);
+
+                // Sanity clamp against an obviously corrupt save
+                // (negative, or wildly out of range - like the
+                // engine=256 that was crashing the Display
+                // screen). Handler.c doesn't know the UI
+                // dropdown's real option count, so this is just a
+                // first line of defense; solDropdown_SetSelectedIndex
+                // clamps again against the dropdown's actual
+                // OptionCount when this value is loaded into it.
+                if (parsedEngine < 0 || parsedEngine > 63)
+                {
+                    printf("engine value %d out of range, resetting to default\n", parsedEngine);
+                    parsedEngine = DEFAULT_ENGINE_SETTING;
+                }
+
+                ENGINE_TYPE = parsedEngine;
                 break;
+            }
 
             case CFG_TEXTURESHOW:
                 TEXTURESHOW_SETTING = strcmp(value, "true") == 0;
@@ -236,11 +298,19 @@ static int Load(void)
                 break;
 
             case CFG_MOUSE_SENSITIVITY:
-                MOUSE_SENSITIVITY_SETTING = ((float)atof(value) - 1.0f) / 119.0f;;
+                MOUSE_SENSITIVITY_SETTING = (float)atof(value);
+                break;
+
+            case CFG_INVERT_MOUSE_X:
+                INVERT_MOUSE_X_SETTING = strcmp(value, "true") == 0;
                 break;
 
             case CFG_INVERT_MOUSE_Y:
                 INVERT_MOUSE_Y_SETTING = strcmp(value, "true") == 0;
+                break;
+
+            case CFG_USE_MOUSE:
+                USE_MOUSE_SETTING = strcmp(value, "true") == 0;
                 break;
 
             case CFG_MOVE_FORWARD:
@@ -306,7 +376,10 @@ static int Load(void)
 // saves settings to the config file
 static int Save(void)
 {
-    FILE *file = fopen("src/Handler/Config.cfg", "w");
+    char configPath[MAX_PATH + 32];
+    GetConfigPath(configPath, sizeof(configPath));
+
+    FILE *file = fopen(configPath, "w");
 
     if (file == NULL)
     {
@@ -325,14 +398,16 @@ static int Save(void)
     fprintf(file, "engine=%d\n", ENGINE_TYPE);
     fprintf(file, "avatarshow=%s\n", AVATARSHOW_SETTING ? "true" : "false");
     fprintf(file, "textureshow=%s\n", TEXTURESHOW_SETTING ? "true" : "false");
-    fprintf(file, "framerate=%d\n", (int)(1.0f + FRAMERATE_SETTING * 119.0f));
+    fprintf(file, "framerate=%d\n", FRAMERATE_SETTING);
     fprintf(file, "vsync=%s\n", VSYNC_SETTING ? "true" : "false");
     fprintf(file, "antialiasing=%s\n", ANTIALIASING_SETTING ? "true" : "false");
     fprintf(file, "motionblur=%s\n\n", MOTIONBLUR_SETTING ? "true" : "false");
 
     fprintf(file, "# Input Settings\n");
     fprintf(file, "mouse_sensitivity=%f\n", MOUSE_SENSITIVITY_SETTING);
-    fprintf(file, "invert_mouse_y=%s\n\n", INVERT_MOUSE_Y_SETTING ? "true" : "false");
+    fprintf(file, "invert_mouse_x=%s\n", INVERT_MOUSE_X_SETTING ? "true" : "false");
+    fprintf(file, "invert_mouse_y=%s\n", INVERT_MOUSE_Y_SETTING ? "true" : "false");
+    fprintf(file, "use_mouse=%s\n\n", USE_MOUSE_SETTING ? "true" : "false");
 
     fprintf(file, "# Control Keys\n");
     fprintf(file, "move_forward=%s\n", KeyToString(MOVE_FORWARD));
@@ -343,9 +418,8 @@ static int Save(void)
     fprintf(file, "look_left=%s\n", KeyToString(LOOK_LEFT));
     fprintf(file, "look_right=%s\n", KeyToString(LOOK_RIGHT));
     fprintf(file, "look_up=%s\n", KeyToString(LOOK_UP));
-    fprintf(file, "look_down=%s\n", KeyToString(LOOK_DOWN));
+    fprintf(file, "look_down=%s\n\n", KeyToString(LOOK_DOWN));
 
-    
     fprintf(file, "# Volume Settings\n");
     fprintf(file, "master_volume=%f\n", MASTER_VOL);
     fprintf(file, "lobby_volume=%f\n", LOBBY_VOL);
@@ -353,13 +427,17 @@ static int Save(void)
     fprintf(file, "effects_volume=%f\n", SFX_VOL);
 
     fclose(file);
+
     return 0;
 }
 
 // resets the config file
-static int Reset(void) 
+static int Reset(void)
 {
-    FILE *file = fopen("src/Handler/Config.cfg", "w");
+    char configPath[MAX_PATH + 32];
+    GetConfigPath(configPath, sizeof(configPath));
+
+    FILE *file = fopen(configPath, "w");
 
     if (file == NULL)
     {
@@ -385,7 +463,9 @@ static int Reset(void)
 
     fprintf(file, "# Input Settings\n");
     fprintf(file, "mouse_sensitivity=%f\n", DEFAULT_MOUSE_SENSITIVITY_SETTING);
-    fprintf(file, "invert_mouse_y=%s\n\n", DEFAULT_INVERT_MOUSE_Y_SETTING);
+    fprintf(file, "invert_mouse_x=%s\n", DEFAULT_INVERT_MOUSE_X_SETTING);
+    fprintf(file, "invert_mouse_y=%s\n", DEFAULT_INVERT_MOUSE_Y_SETTING);
+    fprintf(file, "use_mouse=%s\n\n", DEFAULT_USE_MOUSE_SETTING);
 
     fprintf(file, "# Control Keys\n");
     fprintf(file, "move_forward=%s\n", DEFAULT_MOVE_FORWARD);
@@ -396,21 +476,53 @@ static int Reset(void)
     fprintf(file, "look_left=%s\n", DEFAULT_LOOK_LEFT);
     fprintf(file, "look_right=%s\n", DEFAULT_LOOK_RIGHT);
     fprintf(file, "look_up=%s\n", DEFAULT_LOOK_UP);
-    fprintf(file, "look_down=%s\n", DEFAULT_LOOK_DOWN);
-    
+    fprintf(file, "look_down=%s\n\n", DEFAULT_LOOK_DOWN);
+
     fprintf(file, "# Volume Settings\n");
     fprintf(file, "master_volume=%f\n", DEFAULT_MAS_VOL);
-    fprintf(file, "lobby_volume=%f\n",  DEFAULT_LOB_VOL);
-    fprintf(file, "game_volume=%f\n",   DEFAULT_GAME_VOL);
-    fprintf(file, "effects_volume=%f\n",DEFAULT_SFX_VOL);
+    fprintf(file, "lobby_volume=%f\n", DEFAULT_LOB_VOL);
+    fprintf(file, "game_volume=%f\n", DEFAULT_GAME_VOL);
+    fprintf(file, "effects_volume=%f\n", DEFAULT_SFX_VOL);
 
     fclose(file);
+
     return 0;
+}
+
+static Screen currentScreen = SCREEN_MAIN_MENU;
+static Screen previousScreen = SCREEN_MAIN_MENU;
+
+static void Screen_Init(void)
+{
+    currentScreen = SCREEN_MAIN_MENU;
+    previousScreen = SCREEN_MAIN_MENU;
+}
+
+static void Screen_SetScreen(Screen screen)
+{
+    previousScreen = currentScreen;
+    currentScreen = screen;
+}
+
+static void Screen_GoBack(void)
+{
+    currentScreen = previousScreen;
+}
+
+static Screen Screen_GetCurrentScreen(void)
+{
+    return currentScreen;
 }
 
 // Defines each part of the handler to the C files
 const Handler gHandler = 
 {
+    .Screen = {
+        .SetScreen = Screen_SetScreen,
+        .GoBack = Screen_GoBack,
+        .GetCurrentScreen = Screen_GetCurrentScreen,
+        .Init = Screen_Init
+    },
     .Settings = {
         .Load  = Load,
         .Save  = Save,

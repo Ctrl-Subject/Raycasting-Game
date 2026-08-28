@@ -13,17 +13,20 @@ float FOV_SETTING                = DEFAULT_FOV_SETTING;
 
 // Graphics Settings
 bool  ENGINE_TYPE                = DEFAULT_ENGINE_SETTING;
-bool  AVATARSHOW_SETTING         = true;
-bool  TEXTURESHOW_SETTING        = true;
+bool  AVATARSHOW_SETTING         = DEFAULT_AVATARSHOW_SETTING;
+bool  TEXTURESHOW_SETTING        = DEFAULT_TEXTURESHOW_SETTING;
 int   FRAMERATE_SETTING          = DEFAULT_FRAMERATE_SETTING;
-bool  VSYNC_SETTING              = true;
-bool  ANTIALIASING_SETTING       = true;
-bool  MOTIONBLUR_SETTING         = true;
+bool  VSYNC_SETTING              = DEFAULT_VSYNC_SETTING;
+bool  ANTIALIASING_SETTING       = DEFAULT_ANTIALIASING_SETTING;
+bool  MOTIONBLUR_SETTING         = DEFAULT_MOTIONBLUR_SETTING;
 
 // Input Settings
 float MOUSE_SENSITIVITY_SETTING  = DEFAULT_MOUSE_SENSITIVITY_SETTING;
-bool  INVERT_MOUSE_Y_SETTING     = false;
-// Controls Keys                 =
+bool INVERT_MOUSE_X_SETTING      = DEFAULT_INVERT_MOUSE_X_SETTING;
+bool INVERT_MOUSE_Y_SETTING      = DEFAULT_INVERT_MOUSE_Y_SETTING;
+bool  USE_MOUSE_SETTING          = DEFAULT_USE_MOUSE_SETTING;
+
+// Controls Keys
 int MOVE_FORWARD                 = 'w';
 int MOVE_BACK                    = 's';
 int MOVE_LEFT                    = 'a';
