@@ -34,4 +34,10 @@ namespace game
     // automatically by init() with a time-based seed; exposed here so
     // you can pass a fixed seed for repeatable testing.
     void setFruitSeed(unsigned int seed);
+
+    // Feed raw window-space cursor coordinates in from main.cpp's
+    // MouseMove callback. Used for mouse-look instead of RCUT's own
+    // mouse delta, which is bounded by the screen edge rather than
+    // re-centring the cursor each frame.
+    void onMouseMove(int x, int y);
 }

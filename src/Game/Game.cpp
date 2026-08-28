@@ -116,6 +116,47 @@ namespace game
     static bool g_initialised = false;
 
     // ------------------------------------------------------------
+    // Mouse-look: RCUT_Input_GetMouseDeltaX() appears to be bounded
+    // by the physical screen edge rather than re-centring the cursor
+    // each frame (turning right worked, left didn't - window sits
+    // near the left edge of the screen with less room to move into).
+    // Tracked ourselves via GLUT's motion callback instead, with the
+    // cursor warped back to the window centre every frame so there's
+    // always room to keep turning either way.
+    // ------------------------------------------------------------
+    static int   g_lastMouseX = 0, g_lastMouseY = 0;
+    static bool  g_mouseTrackingReady = false;
+    static float g_mouseDeltaXAccum = 0.0f;
+    static bool  g_ignoreNextMouseMove = false;
+
+    void onMouseMove(int x, int y)
+    {
+        if (g_ignoreNextMouseMove)
+        {
+            g_ignoreNextMouseMove = false;
+            g_lastMouseX = x; g_lastMouseY = y;
+            return;
+        }
+        if (!g_mouseTrackingReady)
+        {
+            g_lastMouseX = x; g_lastMouseY = y;
+            g_mouseTrackingReady = true;
+            return;
+        }
+        g_mouseDeltaXAccum += (float)(x - g_lastMouseX);
+        g_lastMouseX = x; g_lastMouseY = y;
+    }
+
+    static void RecentreCursor()
+    {
+        int cx = glutGet(GLUT_WINDOW_WIDTH) / 2;
+        int cy = glutGet(GLUT_WINDOW_HEIGHT) / 2;
+        glutWarpPointer(cx, cy);
+        g_ignoreNextMouseMove = true; // the warp itself fires a motion event
+        g_lastMouseX = cx; g_lastMouseY = cy;
+    }
+
+    // ------------------------------------------------------------
     static void ResetPlayer()
     {
         RCUT_Camera_Set(&g_cam, kPlayerStartX, kPlayerStartY, 0.0f, 0.66f);
@@ -262,6 +303,10 @@ namespace game
         ResetPlayer();
         g_lives = 3;
         g_gameOver = false;
+
+        g_mouseTrackingReady = false;
+        g_mouseDeltaXAccum = 0.0f;
+        RecentreCursor();
     }
 
     static void HandleInput(float dt)
@@ -271,7 +316,8 @@ namespace game
         if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_LEFT))  RCUT_Camera_Rotate(&g_cam, -kRotSpeed * dt);
         if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_RIGHT)) RCUT_Camera_Rotate(&g_cam,  kRotSpeed * dt);
 
-        RCUT_Camera_Rotate(&g_cam, RCUT_Input_GetMouseDeltaX() * kMouseSensitivity);
+        RCUT_Camera_Rotate(&g_cam, g_mouseDeltaXAccum * kMouseSensitivity);
+        g_mouseDeltaXAccum = 0.0f;
 
         float forward = 0.0f, strafe = 0.0f;
         if (RCUT_Input_IsKeyDown('w') || RCUT_Input_IsKeyDown('W')) forward += 1.0f;
@@ -331,6 +377,7 @@ namespace game
         if (g_gameOver) return;
         HandleInput(dt);
         HandleCollisions();
+        RecentreCursor();
     }
 
     static void DrawHUDText(int x, int y, const char* text)
