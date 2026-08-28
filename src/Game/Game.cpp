@@ -244,6 +244,7 @@ namespace game
             // Internal raycaster resolution - independent of the
             // actual window size, we upscale when blitting.
             RCUT_Raycaster_Init(kRayW, kRayH);
+            RCUT_Input_Init();
             g_initialised = true;
         }
 
@@ -265,6 +266,8 @@ namespace game
 
     static void HandleInput(float dt)
     {
+        RCUT_Input_Update();
+
         if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_LEFT))  RCUT_Camera_Rotate(&g_cam, -kRotSpeed * dt);
         if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_RIGHT)) RCUT_Camera_Rotate(&g_cam,  kRotSpeed * dt);
 
@@ -373,6 +376,7 @@ namespace game
         {
             RCUT_Sprite_RemoveAll();
             RCUT_Textures_UnloadAll();
+            RCUT_Input_Shutdown();
             RCUT_Raycaster_Shutdown();
             g_initialised = false;
         }
