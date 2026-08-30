@@ -127,6 +127,7 @@ void MouseButton(int button, int state, int x, int y)
 void KeyDown(unsigned char key, int x, int y)
 {
     solInputBridge_KeyDown(key, x, y);
+    game::onKeyDown(key, x, y);
 
     // ESC can still be used to quit.
     if (key == 27)
@@ -140,18 +141,21 @@ void KeyDown(unsigned char key, int x, int y)
 void KeyUp(unsigned char key, int x, int y)
 {
     solInputBridge_KeyUp(key, x, y);
+    game::onKeyUp(key, x, y);
 }
 
 
 void SpecialKeyDown(int key, int x, int y)
 {
     solInputBridge_SpecialKey(key, x, y);
+    game::onSpecialKeyDown(key, x, y);
 }
 
 
 void SpecialKeyUp(int key, int x, int y)
 {
     solInputBridge_SpecialKeyUp(key, x, y);
+    game::onSpecialKeyUp(key, x, y);
 }
 
 

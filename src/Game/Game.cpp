@@ -175,6 +175,29 @@ namespace game
     }
 
     // ------------------------------------------------------------
+    // Keyboard: tracked via FreeGLUT's own keyboard callbacks (fed in
+    // from main.cpp) instead of RCUT_Input_IsKeyDown/IsSpecialKeyDown -
+    // those require RCUT_Input_Init(), which also hides the cursor and
+    // fights our own mouse-look recentring, so RCUT's input system is
+    // avoided entirely rather than just partially.
+    // ------------------------------------------------------------
+    static bool g_keyState[256] = { false };
+    static bool g_specialLeft = false, g_specialRight = false;
+
+    void onKeyDown(unsigned char key, int, int)      { g_keyState[key] = true; }
+    void onKeyUp(unsigned char key, int, int)        { g_keyState[key] = false; }
+    void onSpecialKeyDown(int key, int, int)
+    {
+        if (key == GLUT_KEY_LEFT)  g_specialLeft = true;
+        if (key == GLUT_KEY_RIGHT) g_specialRight = true;
+    }
+    void onSpecialKeyUp(int key, int, int)
+    {
+        if (key == GLUT_KEY_LEFT)  g_specialLeft = false;
+        if (key == GLUT_KEY_RIGHT) g_specialRight = false;
+    }
+
+    // ------------------------------------------------------------
     static void ResetPlayer()
     {
         RCUT_Camera_Set(&g_cam, kPlayerStartX, kPlayerStartY, 0.0f, 0.66f);
@@ -337,26 +360,24 @@ namespace game
     {
         // Mouse look uses g_mouseDeltaXAccum, filled by
         // PollAndRecentreMouse() (direct Win32 polling) once per
-        // frame in update() - not RCUT, not FreeGLUT callbacks.
-        // RCUT_Input_Update() is intentionally not called - it was
-        // suspected of doing its own internal cursor recentring
-        // (likely snapping back to wherever the mouse was when
-        // RCUT_Input_Init() first ran), which fought our own
-        // mouse-look polling and caused a runaway spin. Keyboard via
-        // IsKeyDown/IsSpecialKeyDown below appears unaffected by
-        // skipping Update() - flag it if that turns out not to hold.
+        // frame in update(). Keyboard uses g_keyState/g_specialLeft/
+        // g_specialRight, filled by main.cpp's FreeGLUT keyboard
+        // callbacks. RCUT's input system (Init/Update/IsKeyDown/etc)
+        // is not used anywhere any more - RCUT_Input_Init() turned out
+        // to hide the cursor and install something that kept fighting
+        // our own mouse-look recentring, causing a runaway spin.
 
-        if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_LEFT))  RCUT_Camera_Rotate(&g_cam, -kRotSpeed * dt);
-        if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_RIGHT)) RCUT_Camera_Rotate(&g_cam,  kRotSpeed * dt);
+        if (g_specialLeft)  RCUT_Camera_Rotate(&g_cam, -kRotSpeed * dt);
+        if (g_specialRight) RCUT_Camera_Rotate(&g_cam,  kRotSpeed * dt);
 
         RCUT_Camera_Rotate(&g_cam, g_mouseDeltaXAccum * kMouseSensitivity);
         g_mouseDeltaXAccum = 0.0f;
 
         float forward = 0.0f, strafe = 0.0f;
-        if (RCUT_Input_IsKeyDown('w') || RCUT_Input_IsKeyDown('W')) forward += 1.0f;
-        if (RCUT_Input_IsKeyDown('s') || RCUT_Input_IsKeyDown('S')) forward -= 1.0f;
-        if (RCUT_Input_IsKeyDown('a') || RCUT_Input_IsKeyDown('A')) strafe  += 1.0f;
-        if (RCUT_Input_IsKeyDown('d') || RCUT_Input_IsKeyDown('D')) strafe  -= 1.0f;
+        if (g_keyState['w'] || g_keyState['W']) forward += 1.0f;
+        if (g_keyState['s'] || g_keyState['S']) forward -= 1.0f;
+        if (g_keyState['a'] || g_keyState['A']) strafe  += 1.0f;
+        if (g_keyState['d'] || g_keyState['D']) strafe  -= 1.0f;
 
         if (forward != 0.0f || strafe != 0.0f)
             RCUT_Raycaster_TryMove(&g_cam, forward * kMoveSpeed * dt, strafe * kMoveSpeed * dt);

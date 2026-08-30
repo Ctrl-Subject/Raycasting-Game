@@ -34,4 +34,14 @@ namespace game
     // automatically by init() with a time-based seed; exposed here so
     // you can pass a fixed seed for repeatable testing.
     void setFruitSeed(unsigned int seed);
+
+    // Feed raw keyboard events in from main.cpp's FreeGLUT keyboard
+    // callbacks. Used for movement/look-turning instead of RCUT's own
+    // keyboard functions, since RCUT_Input_Init() (needed to make
+    // those work) also hides the cursor and fights our own mouse-look
+    // recentring - so RCUT's input system is avoided entirely now.
+    void onKeyDown(unsigned char key, int x, int y);
+    void onKeyUp(unsigned char key, int x, int y);
+    void onSpecialKeyDown(int key, int x, int y);
+    void onSpecialKeyUp(int key, int x, int y);
 }

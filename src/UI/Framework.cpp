@@ -391,6 +391,9 @@ namespace
         std::cout << "Start Game clicked\n";
         game::init();
         gHandler.Screen.SetScreen(SCREEN_GAME);
+        // Hide the OS cursor during gameplay - RCUT used to do this
+        // implicitly via RCUT_Input_Init(), which we no longer call.
+        glutSetCursor(GLUT_CURSOR_NONE);
     }
 
 
