@@ -111,7 +111,6 @@ void idle()
 void MouseMove(int x, int y)
 {
     solInputBridge_MouseMove(x, y);
-    game::onMouseMove(x, y);
 }
 
 

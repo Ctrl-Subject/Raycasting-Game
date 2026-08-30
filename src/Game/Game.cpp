@@ -1,6 +1,11 @@
 #include "Game.h"
 #include "../../include/RCUT.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 #include <GL/freeglut.h>
 #include <cstdlib>
 #include <ctime>
@@ -116,44 +121,57 @@ namespace game
     static bool g_initialised = false;
 
     // ------------------------------------------------------------
-    // Mouse-look: RCUT_Input_GetMouseDeltaX() appears to be bounded
-    // by the physical screen edge rather than re-centring the cursor
-    // each frame (turning right worked, left didn't - window sits
-    // near the left edge of the screen with less room to move into).
-    // Tracked ourselves via GLUT's motion callback instead, with the
-    // cursor warped back to the window centre every frame so there's
-    // always room to keep turning either way.
+    // Mouse-look: tested twice now with pure FreeGLUT
+    // (glutMotionFunc/glutPassiveMotionFunc) and passive delivery
+    // just isn't reliable in this shared-window setup - most likely
+    // SolarUI's own message handling on this window intercepts plain
+    // mouse-move messages before FreeGLUT's passive-motion handler
+    // sees them (button-drag messages get through some other path
+    // SolarUI doesn't touch, which is why holding a click "worked").
+    //
+    // Falling back to direct Win32 polling instead (GetCursorPos /
+    // SetCursorPos each frame) - functionally this is what RCUT's own
+    // Engine_BeginFrame is almost certainly doing internally for its
+    // own window anyway. This previously caused a runaway spin, but
+    // that was tracked down to RCUT_Input_Update() doing its own
+    // hidden cursor recentring and fighting with ours - since that's
+    // no longer called anywhere (keyboard uses IsKeyDown/
+    // IsSpecialKeyDown directly, unaffected), nothing else should be
+    // touching the cursor now.
     // ------------------------------------------------------------
-    static int   g_lastMouseX = 0, g_lastMouseY = 0;
-    static bool  g_mouseTrackingReady = false;
+    static bool  g_mouseReady = false;
+    static int   g_mouseLastX = 0, g_mouseLastY = 0; // screen-space
     static float g_mouseDeltaXAccum = 0.0f;
-    static bool  g_ignoreNextMouseMove = false;
 
-    void onMouseMove(int x, int y)
+    static void PollAndRecentreMouse()
     {
-        if (g_ignoreNextMouseMove)
-        {
-            g_ignoreNextMouseMove = false;
-            g_lastMouseX = x; g_lastMouseY = y;
-            return;
-        }
-        if (!g_mouseTrackingReady)
-        {
-            g_lastMouseX = x; g_lastMouseY = y;
-            g_mouseTrackingReady = true;
-            return;
-        }
-        g_mouseDeltaXAccum += (float)(x - g_lastMouseX);
-        g_lastMouseX = x; g_lastMouseY = y;
-    }
+#ifdef _WIN32
+        POINT p;
+        GetCursorPos(&p);
 
-    static void RecentreCursor()
-    {
-        int cx = glutGet(GLUT_WINDOW_WIDTH) / 2;
-        int cy = glutGet(GLUT_WINDOW_HEIGHT) / 2;
-        glutWarpPointer(cx, cy);
-        g_ignoreNextMouseMove = true; // the warp itself fires a motion event
-        g_lastMouseX = cx; g_lastMouseY = cy;
+        if (g_mouseReady)
+            g_mouseDeltaXAccum += (float)(p.x - g_mouseLastX);
+
+        int winX = glutGet(GLUT_WINDOW_X);
+        int winY = glutGet(GLUT_WINDOW_Y);
+        int winW = glutGet(GLUT_WINDOW_WIDTH);
+        int winH = glutGet(GLUT_WINDOW_HEIGHT);
+        int centreX = winX + winW / 2;
+        int centreY = winY + winH / 2;
+
+        SetCursorPos(centreX, centreY);
+
+        // Read back where the cursor actually landed rather than
+        // trusting our calculated target, in case GLUT's window
+        // metrics and Win32's cursor coordinates don't quite agree
+        // (e.g. DPI scaling) - keeps every frame self-consistent
+        // regardless of that.
+        POINT afterWarp;
+        GetCursorPos(&afterWarp);
+        g_mouseLastX = afterWarp.x;
+        g_mouseLastY = afterWarp.y;
+        g_mouseReady = true;
+#endif
     }
 
     // ------------------------------------------------------------
@@ -285,7 +303,14 @@ namespace game
             // Internal raycaster resolution - independent of the
             // actual window size, we upscale when blitting.
             RCUT_Raycaster_Init(kRayW, kRayH);
-            RCUT_Input_Init();
+            // RCUT_Input_Init() intentionally NOT called - removing
+            // RCUT_Input_Update() didn't stop the cursor snapping back
+            // to its position from when Init() ran, so Init() itself
+            // is the remaining suspect (e.g. installing a persistent
+            // hook/timer that resets the cursor independent of
+            // whether Update() gets called each frame). Testing
+            // whether IsKeyDown/IsSpecialKeyDown still work without
+            // any RCUT input setup call at all.
             g_initialised = true;
         }
 
@@ -304,14 +329,22 @@ namespace game
         g_lives = 3;
         g_gameOver = false;
 
-        g_mouseTrackingReady = false;
+        g_mouseReady = false;
         g_mouseDeltaXAccum = 0.0f;
-        RecentreCursor();
     }
 
     static void HandleInput(float dt)
     {
-        RCUT_Input_Update();
+        // Mouse look uses g_mouseDeltaXAccum, filled by
+        // PollAndRecentreMouse() (direct Win32 polling) once per
+        // frame in update() - not RCUT, not FreeGLUT callbacks.
+        // RCUT_Input_Update() is intentionally not called - it was
+        // suspected of doing its own internal cursor recentring
+        // (likely snapping back to wherever the mouse was when
+        // RCUT_Input_Init() first ran), which fought our own
+        // mouse-look polling and caused a runaway spin. Keyboard via
+        // IsKeyDown/IsSpecialKeyDown below appears unaffected by
+        // skipping Update() - flag it if that turns out not to hold.
 
         if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_LEFT))  RCUT_Camera_Rotate(&g_cam, -kRotSpeed * dt);
         if (RCUT_Input_IsSpecialKeyDown(RCUT_KEY_RIGHT)) RCUT_Camera_Rotate(&g_cam,  kRotSpeed * dt);
@@ -377,7 +410,7 @@ namespace game
         if (g_gameOver) return;
         HandleInput(dt);
         HandleCollisions();
-        RecentreCursor();
+        PollAndRecentreMouse();
     }
 
     static void DrawHUDText(int x, int y, const char* text)
@@ -423,7 +456,6 @@ namespace game
         {
             RCUT_Sprite_RemoveAll();
             RCUT_Textures_UnloadAll();
-            RCUT_Input_Shutdown();
             RCUT_Raycaster_Shutdown();
             g_initialised = false;
         }
