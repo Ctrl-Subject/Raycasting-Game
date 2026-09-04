@@ -186,11 +186,13 @@ namespace game
 
     void onKeyDown(unsigned char key, int, int)      { g_keyState[key] = true; }
     void onKeyUp(unsigned char key, int, int)        { g_keyState[key] = false; }
+
     void onSpecialKeyDown(int key, int, int)
     {
         if (key == GLUT_KEY_LEFT)  g_specialLeft = true;
         if (key == GLUT_KEY_RIGHT) g_specialRight = true;
     }
+   
     void onSpecialKeyUp(int key, int, int)
     {
         if (key == GLUT_KEY_LEFT)  g_specialLeft = false;
@@ -224,9 +226,6 @@ namespace game
         g_orbSmallTex = RCUT_Textures_Load("Assets/Textures/Sprite/Orbs/Small/orb.png", nullptr, 1.0f);
         g_orbBigTex   = RCUT_Textures_Load("Assets/Textures/Sprite/Orbs/Big/orb.png",   nullptr, 1.0f);
         g_fruitTex    = RCUT_Textures_Load("Assets/Textures/Sprite/Items/Fruit/Apple.png", nullptr, 1.0f);
-
-        printf("[Game] textures: wall=%d door=%d floor=%d roof=%d orbS=%d orbB=%d fruit=%d\n",
-               g_wallTex, g_doorTex, g_floorTex, g_roofTex, g_orbSmallTex, g_orbBigTex, g_fruitTex);
     }
 
     static void SpawnGhosts()
@@ -314,8 +313,6 @@ namespace game
         if (g_fruitSprite >= 0) RCUT_Sprite_Remove(g_fruitSprite);
         g_fruitSprite = RCUT_Sprite_Add(g_fruitX, g_fruitY, g_fruitTex);
         g_fruitCollected = false;
-
-        printf("[Game] fruit seed=%u -> tile (%d,%d)\n", seed, candidates[pick].first, candidates[pick].second);
     }
 
     // ------------------------------------------------------------
@@ -417,7 +414,6 @@ namespace game
             if (DistSq(g_cam.x, g_cam.y, ghost.x, ghost.y) < kGhostHitRadiusSq)
             {
                 g_lives--;
-                printf("[Game] hit by ghost - lives left: %d\n", g_lives);
 
                 if (g_lives <= 0) { g_gameOver = true; }
                 else               { ResetPlayer(); }
