@@ -224,6 +224,8 @@ static int Load(void)
         // Parse "key=value"
         if (sscanf(line, "%127[^=]=%127s", key, value) != 2)
             continue;
+
+        printf("Key: %s, Value: %s\n", key, value);
         
         //Sets keys to TEMPSETS.h
         switch (get_key(key))
@@ -267,6 +269,7 @@ static int Load(void)
                 // OptionCount when this value is loaded into it.
                 if (parsedEngine < 0 || parsedEngine > 63)
                 {
+                    printf("engine value %d out of range, resetting to default\n", parsedEngine);
                     parsedEngine = DEFAULT_ENGINE_SETTING;
                 }
 

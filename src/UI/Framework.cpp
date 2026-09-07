@@ -122,6 +122,16 @@ static solLabel helpTitle;
 
 
 // ==================================================
+// Pause Menu
+// ==================================================
+
+static solLabel  pauseMenuTitle;
+static solButton resumeButton;
+static solButton pauseMainMenuButton;
+static solButton pauseExitButton;
+
+
+// ==================================================
 // Internal functions
 // ==================================================
 
@@ -202,6 +212,16 @@ namespace
         // --------------------------------------------------
 
         solUI_AddElement(&helpTitle.Element);
+
+
+        // --------------------------------------------------
+        // Pause menu
+        // --------------------------------------------------
+
+        solUI_AddElement(&pauseMenuTitle.Element);
+        solUI_AddElement(&resumeButton.Element);
+        solUI_AddElement(&pauseMainMenuButton.Element);
+        solUI_AddElement(&pauseExitButton.Element);
     }
 
 
@@ -290,6 +310,17 @@ namespace
         // ==================================================
 
         solLabel_Init(&helpTitle, "Help", 300, 100);
+
+
+        // ==================================================
+        // Pause menu
+        // ==================================================
+
+        solLabel_Init(&pauseMenuTitle, "Paused", 50, 50);
+
+        solButton_Init(&resumeButton, "Resume", 50, 75, 200, 50);
+        solButton_Init(&pauseMainMenuButton, "Main Menu", 50, 150, 200, 50);
+        solButton_Init(&pauseExitButton, "Exit", 50, 225, 200, 50);
     }
 
     
@@ -379,6 +410,16 @@ namespace
         // ==================================================
 
         helpTitle.Element.Visibility = SOL_HIDDEN;
+
+
+        // ==================================================
+        // Pause menu
+        // ==================================================
+
+        pauseMenuTitle.Element.Visibility = SOL_HIDDEN;
+        resumeButton.Element.Visibility = SOL_HIDDEN;
+        pauseMainMenuButton.Element.Visibility = SOL_HIDDEN;
+        pauseExitButton.Element.Visibility = SOL_HIDDEN;
     }
 
 
@@ -458,6 +499,14 @@ namespace
     }
 
 
+    void pauseGoToMainMenu()
+    {
+        std::cout << "Main Menu clicked (from pause)\n";
+        gHandler.Screen.SetScreen(SCREEN_MAIN_MENU);
+        glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
+    }
+
+
     // ==================================================
     // Assign callbacks
     // ==================================================
@@ -474,6 +523,13 @@ namespace
         solButton_SetCallback(&resetButton, resetSettings);
         solButton_SetCallback(&saveButton, saveSettings);
         solButton_SetCallback(&exitButton, exitGame);
+
+        // pauseGame/resumeGame live in namespace framework (declared
+        // in Framework.h, defined further down) rather than in this
+        // anonymous namespace, so they're qualified here.
+        solButton_SetCallback(&resumeButton, framework::resumeGame);
+        solButton_SetCallback(&pauseMainMenuButton, pauseGoToMainMenu);
+        solButton_SetCallback(&pauseExitButton, exitGame);
     }
 
 
@@ -561,6 +617,24 @@ namespace framework
     void shutdown()
     {
         solUI_Shutdown();
+    }
+
+
+    void pauseGame()
+    {
+        std::cout << "Game paused\n";
+        gHandler.Screen.SetScreen(SCREEN_PAUSE_MENU);
+        // Show the OS cursor again so the pause menu is clickable.
+        glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
+    }
+
+
+    void resumeGame()
+    {
+        std::cout << "Game resumed\n";
+        gHandler.Screen.SetScreen(SCREEN_GAME);
+        // Hide the OS cursor again, same as startGame().
+        glutSetCursor(GLUT_CURSOR_NONE);
     }
 
 
@@ -722,6 +796,10 @@ namespace framework
 
     void drawPauseMenu()
     {
-        // Pause menu will be implemented here.
+        hideAllElements();
+        pauseMenuTitle.Element.Visibility = SOL_VISIBLE;
+        resumeButton.Element.Visibility = SOL_VISIBLE;
+        pauseMainMenuButton.Element.Visibility = SOL_VISIBLE;
+        pauseExitButton.Element.Visibility = SOL_VISIBLE;
     }
 }

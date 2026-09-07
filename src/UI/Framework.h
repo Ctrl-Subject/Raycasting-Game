@@ -39,6 +39,19 @@ namespace framework
 
 
     // --------------------------------------------------
+    // Pause
+    // --------------------------------------------------
+    //
+    // Exposed so main.cpp's Escape-key handler and the pause
+    // menu's own buttons can both trigger the same transition
+    // (screen switch + cursor state) without duplicating it.
+    // --------------------------------------------------
+
+    void pauseGame();
+    void resumeGame();
+
+
+    // --------------------------------------------------
     // Settings
     // --------------------------------------------------
 

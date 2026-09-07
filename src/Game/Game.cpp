@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "../../include/RCUT.h"
+#include "../Pathfinding/Pathfinding.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -12,6 +13,7 @@
 #include <cstdio>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 namespace game
 {
@@ -100,8 +102,55 @@ namespace game
     static bool g_gameOver = false;
 
     // Ghosts: fixed spawn points in/around the centre "ghost house" gap.
-    struct Ghost { RCUT_SpriteId spriteId; float x, y; };
+    //
+    // AI states, classic Pac-Man style:
+    //   SCATTER     - retreat toward a fixed home corner
+    //   CHASE       - hunt the player (each ghost has its own targeting
+    //                 personality - see ComputeChaseTarget())
+    //   FRIGHTENED  - flee the player after a big orb is eaten
+    //   EATEN       - player caught it while FRIGHTENED; it paths back
+    //                 to the ghost house, then respawns
+    //
+    // Movement is continuous (matching the player), not tile-by-tile:
+    // each ghost walks toward the centre of "nextTile" and re-plans a
+    // fresh nextTile via BFS (Pathfinding.h) every time it arrives.
+    enum class GhostState { SCATTER, CHASE, FRIGHTENED, EATEN };
+
+    struct Ghost
+    {
+        RCUT_SpriteId spriteId;
+        float x, y;                    // continuous position
+        int col, row;                  // tile x/y currently occupies
+        pathfinding::GridPos nextTile;  // tile currently walking toward
+        GhostState state;
+        int texIdx;                     // 0=red(Blinky) 1=pink(Pinky) 2=blue(Inky) 3=yellow(Clyde)
+                                         // - also doubles as "personality" for chase targeting, since
+                                         // spawn order and colour already line up 1:1 with it.
+        pathfinding::GridPos scatterCorner;
+    };
     static std::vector<Ghost> g_ghosts;
+
+    // Global scatter/chase mode, shared by every ghost still in normal
+    // play (i.e. not FRIGHTENED or EATEN) - classic Pac-Man alternates
+    // between the two on a fixed schedule regardless of player action.
+    enum class GlobalMode { SCATTER, CHASE };
+    static GlobalMode g_globalMode = GlobalMode::SCATTER;
+    static float      g_modeTimer = 0.0f;
+    static int         g_modeIndex = 0;
+
+    // Duration (seconds) of each phase in order; once the schedule
+    // runs out, the last two entries (a chase/scatter pair) repeat
+    // indefinitely. Loosely modelled on the original arcade's
+    // shortening scatter windows.
+    static const float kModeSchedule[] = { 7.0f, 20.0f, 7.0f, 20.0f, 5.0f, 20.0f, 5.0f };
+
+    // Frightened mode: triggered by eating a big orb. Global rather
+    // than per-ghost, since every ghost still in normal play flips to
+    // FRIGHTENED together, even though each one leaves it independently
+    // (once EATEN, a ghost stops being affected by this timer).
+    static bool  g_frightenedActive = false;
+    static float g_frightenedTimer = 0.0f;
+    static const float kFrightenedDuration = 8.0f;
 
     // Orbs (pellets): small ones fill the maze, big "power" ones sit
     // in the four corner pockets, classic Pac-Man style.
@@ -186,13 +235,11 @@ namespace game
 
     void onKeyDown(unsigned char key, int, int)      { g_keyState[key] = true; }
     void onKeyUp(unsigned char key, int, int)        { g_keyState[key] = false; }
-
     void onSpecialKeyDown(int key, int, int)
     {
         if (key == GLUT_KEY_LEFT)  g_specialLeft = true;
         if (key == GLUT_KEY_RIGHT) g_specialRight = true;
     }
-   
     void onSpecialKeyUp(int key, int, int)
     {
         if (key == GLUT_KEY_LEFT)  g_specialLeft = false;
@@ -226,6 +273,9 @@ namespace game
         g_orbSmallTex = RCUT_Textures_Load("Assets/Textures/Sprite/Orbs/Small/orb.png", nullptr, 1.0f);
         g_orbBigTex   = RCUT_Textures_Load("Assets/Textures/Sprite/Orbs/Big/orb.png",   nullptr, 1.0f);
         g_fruitTex    = RCUT_Textures_Load("Assets/Textures/Sprite/Items/Fruit/Apple.png", nullptr, 1.0f);
+
+        printf("[Game] textures: wall=%d door=%d floor=%d roof=%d orbS=%d orbB=%d fruit=%d\n",
+               g_wallTex, g_doorTex, g_floorTex, g_roofTex, g_orbSmallTex, g_orbBigTex, g_fruitTex);
     }
 
     static void SpawnGhosts()
@@ -233,11 +283,13 @@ namespace game
         g_ghosts.clear();
         // The centre gap (row 13, cols 9-11) plus the tile directly
         // above it (row 12, col 10) - four natural ghost-house spots.
-        struct { int col, row, texIdx; } spawns[4] = {
-            { 9, 13, 0 }, // red
-            { 10, 13, 1 }, // pink
-            { 11, 13, 2 }, // blue
-            { 10, 12, 3 }, // yellow
+        // Scatter corners follow the classic assignment: each ghost
+        // retreats to a different corner of the map.
+        struct { int col, row, texIdx; pathfinding::GridPos corner; } spawns[4] = {
+            { 9, 13, 0, {19, 1} },   // Blinky (red)    -> top-right
+            { 10, 13, 1, {1, 1} },   // Pinky  (pink)   -> top-left
+            { 11, 13, 2, {19, 25} }, // Inky   (blue)   -> bottom-right
+            { 10, 12, 3, {1, 25} },  // Clyde  (yellow) -> bottom-left
         };
 
         for (auto& s : spawns)
@@ -245,7 +297,19 @@ namespace game
             float x = s.col + 0.5f;
             float y = s.row + 0.5f;
             RCUT_SpriteId id = RCUT_Sprite_Add(x, y, g_ghostTex[s.texIdx]);
-            g_ghosts.push_back({ id, x, y });
+
+            Ghost ghost;
+            ghost.spriteId = id;
+            ghost.x = x;
+            ghost.y = y;
+            ghost.col = s.col;
+            ghost.row = s.row;
+            ghost.nextTile = { s.col, s.row }; // no path chosen yet - forces an immediate re-plan on first update
+            ghost.state = GhostState::SCATTER;
+            ghost.texIdx = s.texIdx;
+            ghost.scatterCorner = s.corner;
+
+            g_ghosts.push_back(ghost);
         }
     }
 
@@ -313,6 +377,269 @@ namespace game
         if (g_fruitSprite >= 0) RCUT_Sprite_Remove(g_fruitSprite);
         g_fruitSprite = RCUT_Sprite_Add(g_fruitX, g_fruitY, g_fruitTex);
         g_fruitCollected = false;
+
+        printf("[Game] fruit seed=%u -> tile (%d,%d)\n", seed, candidates[pick].first, candidates[pick].second);
+    }
+
+    // ------------------------------------------------------------
+    // Ghost AI helpers
+    // ------------------------------------------------------------
+
+    static float DistSq(float ax, float ay, float bx, float by)
+    {
+        float dx = ax - bx, dy = ay - by;
+        return dx * dx + dy * dy;
+    }
+
+    // Ghosts only walk on open floor/teleport tiles - never walls.
+    static bool GhostIsWalkable(int col, int row)
+    {
+        int t = Tile(col, row);
+        return t == 0 || t == 2;
+    }
+
+    static pathfinding::GridPos PlayerTile()
+    {
+        return { (int)g_cam.x, (int)g_cam.y };
+    }
+
+    // Snaps the camera's continuous facing vector to the nearest
+    // cardinal direction, since ghost targeting reasons about the
+    // tile grid rather than a free-form angle.
+    static pathfinding::GridPos DirToGridOffset(float dirX, float dirY)
+    {
+        if (fabsf(dirX) > fabsf(dirY))
+            return { dirX > 0.0f ? 1 : -1, 0 };
+        else
+            return { 0, dirY > 0.0f ? 1 : -1 };
+    }
+
+    // Clamps a computed target tile into map bounds and, if it lands on
+    // a wall, falls back to a known-safe tile instead. Ghost targeting
+    // formulas below can easily produce a tile that's outside the map
+    // or inside a wall (e.g. "4 tiles ahead of the player" near an
+    // edge) - BFS needs a walkable goal, so this keeps every formula
+    // safe without cluttering each one with its own bounds checking.
+    static pathfinding::GridPos ClampTargetToWalkable(pathfinding::GridPos target, pathfinding::GridPos fallback)
+    {
+        target.col = std::max(0, std::min(kMapWidth - 1, target.col));
+        target.row = std::max(0, std::min(kMapHeight - 1, target.row));
+
+        if (Tile(target.col, target.row) == 1)
+            return fallback;
+
+        return target;
+    }
+
+    // Classic four-personality chase targeting. Each ghost aims at a
+    // different tile derived from the player's position, so they
+    // approach from different angles instead of all queuing up behind
+    // each other.
+    static pathfinding::GridPos ComputeChaseTarget(Ghost& ghost)
+    {
+        pathfinding::GridPos playerTile = PlayerTile();
+
+        switch (ghost.texIdx)
+        {
+            case 0: // Blinky (red) - direct chase, straight for the player.
+                return playerTile;
+
+            case 1: // Pinky (pink) - ambushes 4 tiles ahead of the player.
+            {
+                pathfinding::GridPos offset = DirToGridOffset(g_cam.dirX, g_cam.dirY);
+                pathfinding::GridPos target{ playerTile.col + offset.col * 4, playerTile.row + offset.row * 4 };
+                return ClampTargetToWalkable(target, playerTile);
+            }
+
+            case 2: // Inky (blue) - classic "reflection" targeting: draws
+                    // a line from Blinky through the point 2 tiles ahead
+                    // of the player, then doubles it. Falls back to a
+                    // direct chase if Blinky (ghost 0) isn't available.
+            {
+                if (g_ghosts.empty()) return playerTile;
+
+                pathfinding::GridPos offset = DirToGridOffset(g_cam.dirX, g_cam.dirY);
+                pathfinding::GridPos twoAhead{ playerTile.col + offset.col * 2, playerTile.row + offset.row * 2 };
+                pathfinding::GridPos blinkyTile{ g_ghosts[0].col, g_ghosts[0].row };
+
+                pathfinding::GridPos target{
+                    blinkyTile.col + 2 * (twoAhead.col - blinkyTile.col),
+                    blinkyTile.row + 2 * (twoAhead.row - blinkyTile.row)
+                };
+                return ClampTargetToWalkable(target, playerTile);
+            }
+
+            case 3: // Clyde (yellow) - chases directly until close, then
+                    // retreats to his own scatter corner ("shy" behaviour).
+            {
+                const float kClydeShyDistSq = 8.0f * 8.0f;
+                return (DistSq(ghost.x, ghost.y, g_cam.x, g_cam.y) > kClydeShyDistSq)
+                    ? playerTile
+                    : ghost.scatterCorner;
+            }
+
+            default:
+                return playerTile;
+        }
+    }
+
+    // Flee target for FRIGHTENED ghosts: reflects the ghost's tile
+    // through the player's tile and pushes it further out, so BFS
+    // routes the ghost away from the player rather than toward them.
+    static pathfinding::GridPos ComputeFleeTarget(Ghost& ghost)
+    {
+        pathfinding::GridPos playerTile = PlayerTile();
+
+        int dCol = ghost.col - playerTile.col;
+        int dRow = ghost.row - playerTile.row;
+
+        pathfinding::GridPos target{ ghost.col + dCol * 4, ghost.row + dRow * 4 };
+        return ClampTargetToWalkable(target, { ghost.col, ghost.row });
+    }
+
+    // RCUT has no way to change a sprite's texture in place, so
+    // swapping a ghost's look (normal <-> scared) means removing and
+    // re-adding its sprite at the same position with a different one.
+    static void SetGhostTexture(Ghost& ghost, RCUT_TextureId tex)
+    {
+        RCUT_Sprite_Remove(ghost.spriteId);
+        ghost.spriteId = RCUT_Sprite_Add(ghost.x, ghost.y, tex);
+    }
+
+    // Picks a fresh target tile for the ghost's current state and asks
+    // Pathfinding.h for the next single step toward it. Called once
+    // whenever a ghost's state changes, and again every time it
+    // reaches the tile it was already walking to.
+    static void UpdateGhostTarget(Ghost& ghost)
+    {
+        pathfinding::GridPos target;
+
+        switch (ghost.state)
+        {
+            case GhostState::CHASE:      target = ComputeChaseTarget(ghost); break;
+            case GhostState::SCATTER:    target = ghost.scatterCorner;       break;
+            case GhostState::FRIGHTENED: target = ComputeFleeTarget(ghost);  break;
+            case GhostState::EATEN:      target = { 10, 13 };                break; // ghost house centre
+        }
+
+        pathfinding::GridPos current{ ghost.col, ghost.row };
+        ghost.nextTile = pathfinding::FindNextStepBFS(current, target, kMapWidth, kMapHeight, GhostIsWalkable);
+    }
+
+    // Advances the global SCATTER/CHASE clock and, on every flip,
+    // updates every ghost still in normal play (not FRIGHTENED/EATEN)
+    // to the new mode and forces an immediate re-plan - approximating
+    // the original arcade's "ghosts reverse direction on every mode
+    // swap" behaviour, adapted for continuous rather than tile-by-tile
+    // movement.
+    static void UpdateGlobalMode(float dt)
+    {
+        if (g_frightenedActive) return; // frightened overrides scatter/chase entirely
+
+        g_modeTimer += dt;
+
+        const int kScheduleLen = (int)(sizeof(kModeSchedule) / sizeof(kModeSchedule[0]));
+        float duration = kModeSchedule[std::min(g_modeIndex, kScheduleLen - 1)];
+
+        if (g_modeTimer < duration) return;
+
+        g_modeTimer = 0.0f;
+        g_modeIndex++;
+        g_globalMode = (g_globalMode == GlobalMode::SCATTER) ? GlobalMode::CHASE : GlobalMode::SCATTER;
+
+        for (auto& ghost : g_ghosts)
+        {
+            if (ghost.state != GhostState::SCATTER && ghost.state != GhostState::CHASE) continue;
+
+            ghost.state = (g_globalMode == GlobalMode::SCATTER) ? GhostState::SCATTER : GhostState::CHASE;
+            UpdateGhostTarget(ghost);
+        }
+    }
+
+    // Eating a big orb frightens every ghost currently in normal play.
+    // Ghosts already EATEN (mid-return to the ghost house) are left
+    // alone - they keep heading home rather than fleeing partway.
+    static void StartFrightenedMode()
+    {
+        g_frightenedActive = true;
+        g_frightenedTimer = kFrightenedDuration;
+
+        for (auto& ghost : g_ghosts)
+        {
+            if (ghost.state == GhostState::EATEN) continue;
+
+            ghost.state = GhostState::FRIGHTENED;
+            SetGhostTexture(ghost, g_ghostTex[4]);
+            UpdateGhostTarget(ghost);
+        }
+    }
+
+    // Counts down frightened mode and, once it ends, returns any
+    // still-FRIGHTENED ghost to whatever the global mode currently is.
+    static void UpdateFrightenedTimer(float dt)
+    {
+        if (!g_frightenedActive) return;
+
+        g_frightenedTimer -= dt;
+        if (g_frightenedTimer > 0.0f) return;
+
+        g_frightenedActive = false;
+
+        for (auto& ghost : g_ghosts)
+        {
+            if (ghost.state != GhostState::FRIGHTENED) continue;
+
+            ghost.state = (g_globalMode == GlobalMode::SCATTER) ? GhostState::SCATTER : GhostState::CHASE;
+            SetGhostTexture(ghost, g_ghostTex[ghost.texIdx]);
+            UpdateGhostTarget(ghost);
+        }
+    }
+
+    static const float kGhostNormalSpeed = 2.0f;
+    static const float kGhostFrightenedSpeed = 1.0f;
+    static const float kGhostEatenSpeed = 4.0f;
+    static const float kTileArriveEpsilon = 0.05f;
+
+    // Moves one ghost toward the centre of its current target tile,
+    // snapping and re-planning via BFS whenever it arrives. EATEN
+    // ghosts that make it back to the ghost house respawn here too.
+    static void UpdateGhost(Ghost& ghost, float dt)
+    {
+        if (ghost.state == GhostState::EATEN && ghost.col == 10 && ghost.row == 13)
+        {
+            ghost.state = (g_globalMode == GlobalMode::SCATTER) ? GhostState::SCATTER : GhostState::CHASE;
+            SetGhostTexture(ghost, g_ghostTex[ghost.texIdx]);
+            UpdateGhostTarget(ghost);
+        }
+
+        float speed = kGhostNormalSpeed;
+        if (ghost.state == GhostState::FRIGHTENED) speed = kGhostFrightenedSpeed;
+        if (ghost.state == GhostState::EATEN)      speed = kGhostEatenSpeed;
+
+        float targetX = ghost.nextTile.col + 0.5f;
+        float targetY = ghost.nextTile.row + 0.5f;
+
+        float dx = targetX - ghost.x;
+        float dy = targetY - ghost.y;
+        float dist = sqrtf(dx * dx + dy * dy);
+
+        if (dist < kTileArriveEpsilon)
+        {
+            ghost.x = targetX;
+            ghost.y = targetY;
+            ghost.col = ghost.nextTile.col;
+            ghost.row = ghost.nextTile.row;
+            UpdateGhostTarget(ghost);
+        }
+        else
+        {
+            float move = speed * dt;
+            if (move > dist) move = dist;
+            ghost.x += dx / dist * move;
+            ghost.y += dy / dist * move;
+        }
+
+        RCUT_Sprite_SetPos(ghost.spriteId, ghost.x, ghost.y);
     }
 
     // ------------------------------------------------------------
@@ -344,6 +671,17 @@ namespace game
         SpawnGhosts();
         SpawnOrbs();
         setFruitSeed((unsigned int)time(nullptr));
+
+        // Ghost AI mode reset - every game restart begins in SCATTER,
+        // same as the classic arcade opening.
+        g_globalMode = GlobalMode::SCATTER;
+        g_modeTimer = 0.0f;
+        g_modeIndex = 0;
+        g_frightenedActive = false;
+        g_frightenedTimer = 0.0f;
+
+        for (auto& ghost : g_ghosts)
+            UpdateGhostTarget(ghost);
 
         ResetPlayer();
         g_lives = 3;
@@ -380,12 +718,6 @@ namespace game
             RCUT_Raycaster_TryMove(&g_cam, forward * kMoveSpeed * dt, strafe * kMoveSpeed * dt);
     }
 
-    static float DistSq(float ax, float ay, float bx, float by)
-    {
-        float dx = ax - bx, dy = ay - by;
-        return dx * dx + dy * dy;
-    }
-
     static void HandleCollisions()
     {
         const float kPickupRadiusSq = 0.25f * 0.25f * 4.0f; // ~0.5 tile radius
@@ -398,6 +730,8 @@ namespace game
             {
                 orb.collected = true;
                 RCUT_Sprite_Remove(orb.spriteId);
+
+                if (orb.big) StartFrightenedMode();
             }
         }
 
@@ -411,13 +745,25 @@ namespace game
 
         for (auto& ghost : g_ghosts)
         {
+            if (ghost.state == GhostState::EATEN) continue; // already dealt with, can't hit the player again on its way home
+
             if (DistSq(g_cam.x, g_cam.y, ghost.x, ghost.y) < kGhostHitRadiusSq)
             {
-                g_lives--;
+                if (ghost.state == GhostState::FRIGHTENED)
+                {
+                    ghost.state = GhostState::EATEN;
+                    UpdateGhostTarget(ghost);
+                    printf("[Game] ate a frightened ghost\n");
+                }
+                else
+                {
+                    g_lives--;
+                    printf("[Game] hit by ghost - lives left: %d\n", g_lives);
 
-                if (g_lives <= 0) { g_gameOver = true; }
-                else               { ResetPlayer(); }
-                break;
+                    if (g_lives <= 0) { g_gameOver = true; }
+                    else               { ResetPlayer(); }
+                    break;
+                }
             }
         }
     }
@@ -426,6 +772,12 @@ namespace game
     {
         if (g_gameOver) return;
         HandleInput(dt);
+
+        UpdateGlobalMode(dt);
+        UpdateFrightenedTimer(dt);
+        for (auto& ghost : g_ghosts)
+            UpdateGhost(ghost, dt);
+
         HandleCollisions();
         PollAndRecentreMouse();
     }
@@ -462,6 +814,14 @@ namespace game
         snprintf(livesText, sizeof(livesText), "LIVES: %d", g_lives);
         glColor3f(1.0f, 1.0f, 1.0f);
         DrawHUDText(10, 24, livesText);
+
+        if (g_frightenedActive)
+        {
+            char frightText[48];
+            snprintf(frightText, sizeof(frightText), "FRIGHTENED: %.1fs", g_frightenedTimer);
+            glColor3f(0.4f, 0.6f, 1.0f);
+            DrawHUDText(10, 48, frightText);
+        }
 
         if (g_gameOver)
             DrawHUDText(winW / 2 - 40, winH / 2, "GAME OVER");

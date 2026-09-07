@@ -129,11 +129,30 @@ void KeyDown(unsigned char key, int x, int y)
     solInputBridge_KeyDown(key, x, y);
     game::onKeyDown(key, x, y);
 
-    // ESC can still be used to quit.
-    if (key == 27)
+    if (key == 27) // Escape
     {
-        solUI_Shutdown();
-        std::exit(0);
+        Screen current = gHandler.Screen.GetCurrentScreen();
+
+        if (current == SCREEN_GAME)
+        {
+            // Open the pause screen. This alone is enough to pause
+            // the game loop too: idle() only calls game::update()
+            // while SCREEN_GAME is current, so once we switch away
+            // from it, movement/collision/physics simply stop
+            // running each frame until we switch back.
+            framework::pauseGame();
+        }
+        else if (current == SCREEN_PAUSE_MENU)
+        {
+            // Pressing Escape again resumes, same as the Resume button.
+            framework::resumeGame();
+        }
+        else
+        {
+            // Everywhere else (main menu, settings, etc.), ESC still quits.
+            solUI_Shutdown();
+            std::exit(0);
+        }
     }
 }
 
