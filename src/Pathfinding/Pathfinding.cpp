@@ -9,11 +9,7 @@ namespace pathfinding
         return p.col >= 0 && p.row >= 0 && p.col < gridWidth && p.row < gridHeight;
     }
 
-    bool FindPathBFS(
-        GridPos start,
-        GridPos goal,
-        int gridWidth,
-        int gridHeight,
+    bool FindPathBFS(GridPos start, GridPos goal, int gridWidth,int gridHeight,
         IsWalkableFn isWalkable,
         std::vector<GridPos>& outPath)
     {
