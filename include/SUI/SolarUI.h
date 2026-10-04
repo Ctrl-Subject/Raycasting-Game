@@ -11,9 +11,9 @@ extern "C" {
 
 
 
-// **********************************************
-// *              VERSION INFORMATION            *
-// **********************************************
+
+
+
 
 #define SOLARUI_VERSION_MAJOR 1
 #define SOLARUI_VERSION_MINOR 0
@@ -21,9 +21,9 @@ extern "C" {
 
 
 
-// **********************************************
-// *              CORE LIFECYCLE                 *
-// **********************************************
+
+
+
 
 
 SOLARUI_API int solUI_Init(void);
@@ -40,9 +40,9 @@ SOLARUI_API void solUI_Draw(void);
 
 
 
-// **********************************************
-// *              ELEMENT MANAGEMENT             *
-// **********************************************
+
+
+
 
 
 SOLARUI_API bool solUI_AddElement(
@@ -57,9 +57,9 @@ SOLARUI_API bool solUI_RemoveElement(
 
 
 
-// **********************************************
-// *              LAYER / INPUT CONTROL          *
-// **********************************************
+
+
+
 
 
 SOLARUI_API void solUI_CaptureInput(
@@ -85,9 +85,9 @@ SOLARUI_API int solUI_GetElementLayer(
 
 
 
-// **********************************************
-// *              VIEWPORT                      *
-// **********************************************
+
+
+
 
 
 SOLARUI_API void solUI_SetLogicalSize(
@@ -113,9 +113,9 @@ SOLARUI_API void solUI_ScreenToLogical(
 
 
 
-// **********************************************
-// *              FONT SYSTEM                   *
-// **********************************************
+
+
+
 
 
 SOLARUI_API void solUI_SetFont(
@@ -124,9 +124,9 @@ SOLARUI_API void solUI_SetFont(
 
 
 
-// **********************************************
-// *              LABEL                          *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -179,9 +179,9 @@ SOLARUI_API void solLabel_SetFont(
 
 
 
-// **********************************************
-// *              BUTTON                         *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -266,9 +266,9 @@ SOLARUI_API void solButton_SetCallback(
 
 
 
-// **********************************************
-// *              SLIDER                         *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -350,9 +350,9 @@ SOLARUI_API void solSlider_SetStyle(
 
 
 
-// **********************************************
-// *              CHECKBOX                       *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -431,9 +431,9 @@ SOLARUI_API void solCheckbox_SetStyle(
 
 
 
-// **********************************************
-// *              DROPDOWN                       *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -467,10 +467,10 @@ typedef struct
     int HoverIndex;
 
 
-    /*
-        When open, this becomes a temporary
-        overlay element.
-    */
+    
+
+
+
     int PopupLayer;
 
 
@@ -544,9 +544,9 @@ SOLARUI_API void solDropdown_SetStyle(
 
 
 
-// **********************************************
-// *              IMAGE                          *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -611,9 +611,9 @@ SOLARUI_API void solImage_SetStyle(
 
 
 
-// **********************************************
-// *              VIDEO                          *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -708,9 +708,9 @@ SOLARUI_API void solVideo_Unload(
 
 
 
-// **********************************************
-// *              INPUT BOX                      *
-// **********************************************
+
+
+
 
 typedef struct
 {
@@ -816,12 +816,12 @@ SOLARUI_API void solInputBox_SetStyle(
 
 
 
-// **********************************************
-// *              INPUT FEED                     *
-// **********************************************
-// Call these from your own window/event system;
-// they mirror GLUT's callback signatures but do
-// not require GLUT itself to call them.
+
+
+
+
+
+
 
 
 SOLARUI_API void solInputBridge_Init(void);

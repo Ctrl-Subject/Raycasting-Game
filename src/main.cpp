@@ -6,14 +6,8 @@
 
 #include <cstdlib>
 
-// Id of the main game window. GLUI creates its own windows, and
-// glutPostRedisplay() only redraws whichever window is current, so
-// idle() switches back to this one first.
 static int MainWindow = 0;
 
-// Darkens whatever is already on screen with a see-through black quad,
-// used behind the pause menu so the paused game stays visible but the
-// menu stands out. alpha is 0 (no change) to 1 (fully black).
 static void dimScreen(float alpha)
 {
     int width = glutGet(GLUT_WINDOW_WIDTH);
@@ -87,9 +81,6 @@ void display()
             break;
 
         case SCREEN_PAUSE_MENU:
-            // The paused game is drawn first, then dimmed, then the menu
-            // goes on top. game::update() is not called while paused (see
-            // idle()), so this is the same frozen frame every time.
             game::render();
             dimScreen(0.6f);
             framework::drawPauseMenu();
@@ -104,9 +95,6 @@ void display()
             break;
     }
 
-    // GLUI draws its own windows, so there is nothing to draw here for
-    // the menus. The game screen draws its own HUD directly and has no
-    // menu windows, so hide them all there.
     if (gHandler.Screen.GetCurrentScreen() == SCREEN_GAME)
         framework::hideUI();
 
@@ -114,9 +102,9 @@ void display()
 }
 
 
-// ==================================================
-// Window Resize
-// ==================================================
+
+
+
 
 void reshape(int width, int height)
 {
@@ -132,9 +120,9 @@ void reshape(int width, int height)
 }
 
 
-// ==================================================
-// Update
-// ==================================================
+
+
+
 
 void idle()
 {
@@ -153,44 +141,27 @@ void idle()
 }
 
 
-// ==================================================
-// Mouse Input
-// ==================================================
-//
-// GLUI handles the mouse for its own windows. In game the mouse
-// is read by Game.cpp directly, so main.cpp has no mouse callbacks.
-// ==================================================
 
 
-// ==================================================
-// Keyboard Input
-// ==================================================
 
 void KeyDown(unsigned char key, int x, int y)
 {
     game::onKeyDown(key, x, y);
 
-    if (key == 27) // Escape
+    if (key == 27) 
     {
         Screen current = gHandler.Screen.GetCurrentScreen();
 
         if (current == SCREEN_GAME)
         {
-            // Open the pause screen. This alone is enough to pause
-            // the game loop too: idle() only calls game::update()
-            // while SCREEN_GAME is current, so once we switch away
-            // from it, movement/collision/physics simply stop
-            // running each frame until we switch back.
             framework::pauseGame();
         }
         else if (current == SCREEN_PAUSE_MENU)
         {
-            // Pressing Escape again resumes, same as the Resume button.
             framework::resumeGame();
         }
         else
         {
-            // Everywhere else (main menu, settings, etc.), ESC still quits.
             framework::shutdown();
             std::exit(0);
         }
@@ -216,9 +187,9 @@ void SpecialKeyUp(int key, int x, int y)
 }
 
 
-// ==================================================
-// Main
-// ==================================================
+
+
+
 
 int main(int argc, char** argv)
 {
@@ -234,39 +205,18 @@ int main(int argc, char** argv)
 
     MainWindow = glutCreateWindow("Raycasting Game - Framework Test");
 
-
-    // Initialise the framework/GLUI.
     framework::init();
-
-
-    glClearColor(
-        0.08f,
-        0.08f,
-        0.12f,
-        1.0f
-    );
-
-
-    // Display
+    glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
     glutDisplayFunc(display);
 
-    // Window, update and keyboard go through GLUI_Master so GLUI can
-    // share them with its own windows. Key presses made while a GLUI
-    // window has focus are still passed on to KeyDown / SpecialKeyDown.
     GLUI_Master.set_glutReshapeFunc(reshape);
     GLUI_Master.set_glutIdleFunc(idle);
     GLUI_Master.set_glutKeyboardFunc(KeyDown);
     GLUI_Master.set_glutSpecialFunc(SpecialKeyDown);
 
-    // Key releases are only needed by the game, so they stay on the
-    // main window.
     glutKeyboardUpFunc(KeyUp);
     glutSpecialUpFunc(SpecialKeyUp);
-
-
-    // Start application.
     glutMainLoop();
-
 
     game::shutdown();
     framework::shutdown();

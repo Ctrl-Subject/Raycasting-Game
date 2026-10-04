@@ -27,9 +27,9 @@
 extern "C" {
 #endif
 
-// ---------------------------------------------------------------------
-// Window
-// ---------------------------------------------------------------------
+
+
+
 
 typedef struct RCUT_Window RCUT_Window;
 
@@ -47,9 +47,9 @@ RCUT_API int  RCUT_Win_GetWidth(const RCUT_Window* win);
 RCUT_API int  RCUT_Win_GetHeight(const RCUT_Window* win);
 RCUT_API bool RCUT_Win_IsOpen(const RCUT_Window* win);
 
-// ---------------------------------------------------------------------
-// Input
-// ---------------------------------------------------------------------
+
+
+
 
 typedef enum RCUT_Key {
     RCUT_KEY_LEFT,
@@ -67,9 +67,9 @@ RCUT_API bool RCUT_Input_IsSpecialKeyDown(RCUT_Key key);
 RCUT_API float RCUT_Input_GetMouseDeltaX(void);
 RCUT_API float RCUT_Input_GetMouseDeltaY(void);
 
-// ---------------------------------------------------------------------
-// Textures
-// ---------------------------------------------------------------------
+
+
+
 
 typedef int RCUT_TextureId;
 
@@ -88,9 +88,9 @@ RCUT_API const RCUT_Texture* RCUT_Textures_Get(RCUT_TextureId id);
 RCUT_API void RCUT_Textures_Unload(RCUT_TextureId id);
 RCUT_API void RCUT_Textures_UnloadAll(void);
 
-// ---------------------------------------------------------------------
-// Objects
-// ---------------------------------------------------------------------
+
+
+
 
 typedef struct RCUT_Camera {
     float x, y;
@@ -120,9 +120,9 @@ RCUT_API const RCUT_Sprite* RCUT_Sprite_Get(RCUT_SpriteId id);
 RCUT_API const RCUT_Sprite* RCUT_Sprite_GetAll(int* outCount);
 RCUT_API void RCUT_Sprite_RemoveAll(void);
 
-// ---------------------------------------------------------------------
-// Raycaster
-// ---------------------------------------------------------------------
+
+
+
 
 typedef struct RCUT_MapDesc {
     const int* tiles;
@@ -143,9 +143,9 @@ RCUT_API const unsigned char* RCUT_Raycaster_GetFramebuffer(void);
 RCUT_API int RCUT_Raycaster_GetWidth(void);
 RCUT_API int RCUT_Raycaster_GetHeight(void);
 
-// ---------------------------------------------------------------------
-// Audio
-// ---------------------------------------------------------------------
+
+
+
 
 typedef int RCUT_SoundId;
 
@@ -161,9 +161,9 @@ RCUT_API void RCUT_Music_Resume(void);
 RCUT_API void RCUT_Music_SetVolume(float volume);
 RCUT_API bool RCUT_Music_IsPlaying(void);
 
-// ---------------------------------------------------------------------
-// Engine
-// ---------------------------------------------------------------------
+
+
+
 
 typedef struct RCUT_EngineDesc {
     int width;

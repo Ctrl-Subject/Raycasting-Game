@@ -9,14 +9,6 @@
 #include <GL/freeglut.h>
 #include <windows.h>
 
-// Works out the full path to Config.cfg from the running
-// executable's own location, rather than the current working
-// directory. The working directory depends on how main.exe was
-// launched (terminal, double-click, a shortcut, an IDE run
-// config, ...), so a path relative to it breaks silently in some
-// of those cases. Config.cfg lives next to main.exe at the
-// project root, so this always finds it regardless of how the
-// program was started.
 static void GetConfigPath(char *outPath, size_t outSize)
 {
     char exePath[MAX_PATH];
@@ -29,7 +21,7 @@ static void GetConfigPath(char *outPath, size_t outSize)
         return;
     }
 
-    // Strip the executable filename, leaving the origin directory.
+    
     char *lastSlash = strrchr(exePath, '\\');
 
     if (lastSlash != NULL)
@@ -41,11 +33,11 @@ static void GetConfigPath(char *outPath, size_t outSize)
         exePath[0] = '\0';
     }
 
-    // Add the Handler directory.
+    
     snprintf(outPath, outSize, "%ssrc\\Handler\\Config.cfg", exePath);
 }
 
-// This enumurator is to say which possible settings are in the config file
+
 typedef enum {
     CFG_UNKNOWN,
 
@@ -84,8 +76,8 @@ typedef enum {
     CFG_SFX_VOLUME
 } ConfigKey;
 
-// This converts each line into the enum ConfigKey
-// This tells me which setting the computer is looking at
+
+
 static ConfigKey get_key(const char *key)
 {
     if (strcmp(key, "resolution") == 0) return CFG_RESOLUTION;
@@ -122,10 +114,10 @@ static ConfigKey get_key(const char *key)
     if (strcmp(key, "game_volume") == 0) return CFG_GAME_VOLUME;
     if (strcmp(key, "effects_volume") == 0) return CFG_SFX_VOLUME;
 
-    return CFG_UNKNOWN; // if no keys are found 
+    return CFG_UNKNOWN; 
 }
 
-// It is a helper function to set Keys
+
 static int ParseKey(const char *value)
 {
     if (strcmp(value, "GLUT_KEY_LEFT") == 0)      return GLUT_KEY_LEFT;
@@ -152,7 +144,7 @@ static int ParseKey(const char *value)
     if (strcmp(value, "GLUT_KEY_PAGE_UP") == 0)   return GLUT_KEY_PAGE_UP;
     if (strcmp(value, "GLUT_KEY_PAGE_DOWN") == 0) return GLUT_KEY_PAGE_DOWN;
 
-    // Normal key (W, A, S, D, J, 1, etc.)
+    
     return (unsigned char)value[0];
 }
 
@@ -194,7 +186,7 @@ static const char *KeyToString(int key)
     }
 }
 
-// Load the Settings from the config file
+
 static int Load(void) 
 {
     char configPath[MAX_PATH + 32];
@@ -202,7 +194,7 @@ static int Load(void)
 
     FILE *file = fopen(configPath, "r");
     
-    // Checker to ensure the file has been opened to read
+    
     if(file == NULL) 
     {
         perror("Could not open config file"); 
@@ -211,23 +203,23 @@ static int Load(void)
 
     char line[256];
 
-    // Scans the document printing the lines in console, and will return values of each type
+    
     while(fgets(line, sizeof(line), file))
     {
         char key[128];
         char value[128];
 
-        // Ignores comments and blank lines
+        
         if (line[0] == '#' || line[0] == '\n')
             continue;
 
-        // Parse "key=value"
+        
         if (sscanf(line, "%127[^=]=%127s", key, value) != 2)
             continue;
 
         printf("Key: %s, Value: %s\n", key, value);
         
-        //Sets keys to TEMPSETS.h
+        
         switch (get_key(key))
         {
                 
@@ -259,14 +251,14 @@ static int Load(void)
             {
                 int parsedEngine = (int)atof(value);
 
-                // Sanity clamp against an obviously corrupt save
-                // (negative, or wildly out of range - like the
-                // engine=256 that was crashing the Display
-                // screen). Handler.c doesn't know the UI
-                // dropdown's real option count, so this is just a
-                // first line of defense; solDropdown_SetSelectedIndex
-                // clamps again against the dropdown's actual
-                // OptionCount when this value is loaded into it.
+                
+                
+                
+                
+                
+                
+                
+                
                 if (parsedEngine < 0 || parsedEngine > 63)
                 {
                     printf("engine value %d out of range, resetting to default\n", parsedEngine);
@@ -368,12 +360,12 @@ static int Load(void)
         
     }
     
-    // closes file
+    
     fclose(file);
     return 0;
 }
 
-// saves settings to the config file
+
 static int Save(void)
 {
     char configPath[MAX_PATH + 32];
@@ -431,7 +423,7 @@ static int Save(void)
     return 0;
 }
 
-// resets the config file
+
 static int Reset(void)
 {
     char configPath[MAX_PATH + 32];
@@ -514,7 +506,7 @@ static Screen Screen_GetCurrentScreen(void)
     return currentScreen;
 }
 
-// Defines each part of the handler to the C files
+
 const Handler gHandler = 
 {
     .Screen = {

@@ -9,9 +9,9 @@
 #include <cstdlib>
 #include <vector>
 
-// ==================================================
-// Window sizes
-// ==================================================
+
+
+
 
 std::vector<int> WinWidthSizes  = {800, 1280, 1920, 3840};
 std::vector<int> WinHeightSizes = {600, 720, 1080, 2160};
@@ -20,27 +20,16 @@ int framework::WinWidth;
 int framework::WinHeight;
 
 
-// ==================================================
-// Settings
-// ==================================================
+
+
+
 
 framework::Settings Settings;
 
 
-// ==================================================
-// Screens
-// ==================================================
-//
-// Same screens and the same layout as the SolarUI version: a
-// column of 200px wide buttons on the left, and the page for the
-// current screen to the right of it (Display and Graphics as two
-// columns, then Controls, Audio and Help).
-//
-// GLUI lays widgets out itself, so each screen is one GLUI window
-// docked to the left of the game window, with the widgets in the
-// same order and the same columns as before. Only one is shown at
-// a time.
-// ==================================================
+
+
+
 
 enum UiWindow
 {
@@ -54,13 +43,6 @@ enum UiWindow
     WIN_COUNT
 };
 
-// One panel per screen, all inside a single GLUI window. Only the
-// panel for the current screen is linked into the window, the others
-// are unlinked, so the window is only ever as big as the current screen.
-// GLUI's unlink() also forgets the panel's own children, and a node's
-// child list is protected. NodeAccess reads and writes it the same way a
-// subclass of the node could, so a screen can be unlinked and linked
-// back with its controls intact.
 struct NodeAccess : public GLUI_Node
 {
     static GLUI_Node*& head(GLUI_Node* node) { return static_cast<NodeAccess*>(node)->child_head; }
@@ -74,19 +56,13 @@ static GLUI_Node*  uiSavedHead[WIN_COUNT];
 static GLUI_Node*  uiSavedTail[WIN_COUNT];
 static int         uiShown = -1;
 static bool        uiBuilt = false;
-
-// GLUI resizes its window a moment after a screen change and does not
-// always redraw it afterwards, so update() keeps asking for a redraw
-// for a short while after every change.
 static int         uiRedrawUntil = 0;
-
-// Panel that the helpers below add controls to.
 static GLUI_Panel*  uiPanel = NULL;
 
 
-// ==================================================
-// Control ids (passed to the GLUI callback)
-// ==================================================
+
+
+
 
 enum ControlId
 {
@@ -108,16 +84,16 @@ enum ControlId
 };
 
 
-// ==================================================
-// Live values
-// ==================================================
-//
-// GLUI controls write straight into these variables, so they
-// take the place of the old Checked / CurrentValue /
-// SelectedIndex fields.
-// ==================================================
 
-// Display Settings
+
+
+
+
+
+
+
+
+
 static int   resolutionIndex = 0;
 static int   fullscreenChecked = 0;
 static int   borderlessFullscreenChecked = 0;
@@ -125,7 +101,7 @@ static float gammaValue = 50.0f;
 static float fovValue = 90.0f;
 static int   engineIndex = 0;
 
-// Graphics
+
 static int   showAvatarsChecked = 0;
 static int   showTexturesChecked = 0;
 static float framerateValue = 60.0f;
@@ -133,22 +109,22 @@ static int   vsyncChecked = 0;
 static int   antiAliasingChecked = 0;
 static int   motionBlurChecked = 0;
 
-// Controls Settings
+
 static float mouseSensitivityValue = 1.0f;
 static int   invertMouseXChecked = 0;
 static int   invertMouseYChecked = 0;
 static int   mouseOnChecked = 0;
 
-// Audio Settings
+
 static float masterVolumeValue = 100.0f;
 static float lobbyMusicVolumeValue = 100.0f;
 static float inGameMusicVolumeValue = 100.0f;
 static float sfxVolumeValue = 100.0f;
 
 
-// ==================================================
-// Options
-// ==================================================
+
+
+
 
 const char* resolutions[] =
 {
@@ -164,14 +140,9 @@ const char* engines[] =
 };
 
 
-// ==================================================
-// Sliders
-// ==================================================
-//
-// GLUI has no slider widget, so a slider is a horizontal scrollbar
-// with the name and current value shown above it (the scrollbar's
-// callback keeps that text up to date).
-// ==================================================
+
+
+
 
 struct SliderInfo
 {
@@ -183,14 +154,12 @@ struct SliderInfo
 static std::vector<SliderInfo> sliders;
 
 
-// ==================================================
-// Internal functions
-// ==================================================
+
+
+
 
 namespace
 {
-    // Keeps a loaded index inside the option list, same job
-    // solDropdown_SetSelectedIndex used to do for us.
     int clampIndex(int index, int count)
     {
         if (index < 0)       return 0;
@@ -199,93 +168,80 @@ namespace
     }
 
 
-    // ==================================================
-    // Button callbacks
-    // ==================================================
+    
+    
+    
 
     void startGame()
     {
-        std::cout << "Start Game clicked\n";
         game::init();
         gHandler.Screen.SetScreen(SCREEN_GAME);
-        // Hide the OS cursor during gameplay - RCUT used to do this
-        // implicitly via RCUT_Input_Init(), which we no longer call.
         glutSetCursor(GLUT_CURSOR_NONE);
     }
 
 
     void openSettings()
     {
-        std::cout << "Settings clicked\n";
         gHandler.Screen.SetScreen(SCREEN_SETTINGS);
     }
 
 
     void openDisplaySettings()
     {
-        std::cout << "Display Settings clicked\n";
         gHandler.Screen.SetScreen(SCREEN_DISPLAY_SETTINGS);
     }
 
 
     void openControlsSettings()
     {
-        std::cout << "Controls Settings clicked\n";
         gHandler.Screen.SetScreen(SCREEN_CONTROLS_SETTINGS);
     }
 
 
     void openAudioSettings()
     {
-        std::cout << "Audio Settings clicked\n";
         gHandler.Screen.SetScreen(SCREEN_AUDIO_SETTINGS);
     }
 
 
     void openHelp()
     {
-        std::cout << "Help clicked\n";
         gHandler.Screen.SetScreen(SCREEN_HELP);
     }
 
 
     void goBack()
     {
-        std::cout << "Back clicked\n";
         gHandler.Screen.SetScreen(SCREEN_MAIN_MENU);
     }
 
 
     void saveSettings()
     {
-        std::cout << "Save clicked\n";
         Settings.Save();
     }
 
     void resetSettings()
     {
-        std::cout << "Reset clicked\n";
         Settings.Reset();
     }
 
     void exitGame()
     {
-        std::cout << "Exit clicked\n";
         std::exit(0);
     }
 
 
     void pauseGoToMainMenu()
     {
-        std::cout << "Main Menu clicked (from pause)\n";
         gHandler.Screen.SetScreen(SCREEN_MAIN_MENU);
         glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
     }
 
 
-    // ==================================================
-    // Slider text
-    // ==================================================
+    
+    
+    
 
     void updateSliderText(const SliderInfo& slider)
     {
@@ -301,14 +257,9 @@ namespace
     }
 
 
-    // ==================================================
-    // GLUI callback
-    // ==================================================
-    //
-    // GLUI gives every control one int callback, so each button
-    // passes its id here and this forwards to the same functions
-    // the SolarUI buttons used to call directly.
-    // ==================================================
+    
+    
+    
 
     void onControl(int id)
     {
@@ -335,10 +286,6 @@ namespace
             case ID_BACK:           goBack();                   break;
             case ID_EXIT:           exitGame();                 break;
 
-            // pauseGame/resumeGame live in namespace framework
-            // (declared in Framework.h, defined further down)
-            // rather than in this anonymous namespace, so they
-            // are qualified here.
             case ID_RESUME:         framework::resumeGame();    break;
             case ID_PAUSE_MAIN_MENU: pauseGoToMainMenu();       break;
             case ID_PAUSE_EXIT:     exitGame();                 break;
@@ -348,15 +295,13 @@ namespace
     }
 
 
-    // ==================================================
-    // Building the screens
-    // ==================================================
+    
+    
+    
 
     const int kButtonW = 200;
     const int kButtonH = 50;
 
-    // The old layout had 25px between buttons and 50px between the
-    // rows of each page. Static text rows stand in for that spacing.
     void spacer(GLUI* window, int rows = 1)
     {
         for (int i = 0; i < rows; i++)
@@ -425,7 +370,7 @@ namespace
     }
 
 
-    // Starts a screen: a panel of its own inside the window.
+    
     void beginScreen(UiWindow which)
     {
         uiScreens[which] = uiWindow->add_panel_to_panel(uiRoot, "", GLUI_PANEL_NONE);
@@ -433,7 +378,7 @@ namespace
     }
 
 
-    // Title label plus the column of buttons every Settings screen has.
+    
     void addSettingsColumn()
     {
         addLabel("3D PacMan - Settings");
@@ -480,9 +425,9 @@ namespace
         uiRoot = uiWindow->add_panel("", GLUI_PANEL_NONE);
 
 
-        // ==================================================
-        // Main menu
-        // ==================================================
+        
+        
+        
 
         beginScreen(WIN_MAIN_MENU);
         addLabel("3D PacMan");
@@ -492,17 +437,17 @@ namespace
         addButton("Exit",       ID_EXIT);
 
 
-        // ==================================================
-        // Settings menu
-        // ==================================================
+        
+        
+        
 
         beginScreen(WIN_SETTINGS);
         addSettingsColumn();
 
 
-        // ==================================================
-        // Display settings (Display column and Graphics column)
-        // ==================================================
+        
+        
+        
 
         beginScreen(WIN_DISPLAY);
         addSettingsColumn();
@@ -530,9 +475,9 @@ namespace
         addCheckbox("Motion Blur", &motionBlurChecked);
 
 
-        // ==================================================
-        // Controls settings
-        // ==================================================
+        
+        
+        
 
         beginScreen(WIN_CONTROLS);
         addSettingsColumn();
@@ -556,9 +501,9 @@ namespace
         addLabel("Mouse for looking");
 
 
-        // ==================================================
-        // Audio settings
-        // ==================================================
+        
+        
+        
 
         beginScreen(WIN_AUDIO);
         addSettingsColumn();
@@ -573,9 +518,9 @@ namespace
         addSlider("Sound Effects Volume", &sfxVolumeValue, 0.0f, 100.0f);
 
 
-        // ==================================================
-        // Help
-        // ==================================================
+        
+        
+        
 
         beginScreen(WIN_HELP);
         addSettingsColumn();
@@ -584,9 +529,9 @@ namespace
         addLabel("Help");
 
 
-        // ==================================================
-        // Pause menu
-        // ==================================================
+        
+        
+        
 
         beginScreen(WIN_PAUSE);
         addLabel("Paused");
@@ -595,9 +540,6 @@ namespace
         addButton("Main Menu", ID_PAUSE_MAIN_MENU);
         addButton("Exit",      ID_PAUSE_EXIT);
 
-
-        // Everything starts unlinked and the window hidden, the draw
-        // functions show the screen that is current.
         for (int i = 0; i < WIN_COUNT; i++)
             detachScreen(i);
 
@@ -611,13 +553,9 @@ namespace
     }
 
 
-    // ==================================================
-    // Visibility
-    // ==================================================
-    //
-    // The display callback asks for a screen every frame, so
-    // this only changes anything when the screen changes.
-    // ==================================================
+    
+    
+    
 
     void showOnly(int which)
     {
@@ -632,16 +570,12 @@ namespace
         if (which >= 0)
         {
             attachScreen(which);
-
-            // Controls of unlinked screens miss loadValues(), so read the
-            // live values in again.
             uiWindow->sync_live();
             updateAllSliderText();
 
             uiWindow->refresh();
             uiWindow->show();
 
-            // Redraw the window at its new size.
             uiRedrawUntil = glutGet(GLUT_ELAPSED_TIME) + 600;
             glutSetWindow(uiWindow->get_glut_window_id());
             glutPostRedisplay();
@@ -657,9 +591,9 @@ namespace
     }
 
 
-    // ==================================================
-    // Load settings into UI
-    // ==================================================
+    
+    
+    
 
     int loadValues()
     {
@@ -692,7 +626,7 @@ namespace
         inGameMusicVolumeValue = GAME_VOL;
         sfxVolumeValue = SFX_VOL;
 
-        // Push the new values into the controls.
+        
         if (uiBuilt)
         {
             GLUI_Master.sync_live_all();
@@ -704,9 +638,9 @@ namespace
 }
 
 
-// ==================================================
-// Framework
-// ==================================================
+
+
+
 
 namespace framework
 {
@@ -714,17 +648,10 @@ namespace framework
     {
         gHandler.Settings.Load();
 
-        // The windows are only built once. Reset() calls init()
-        // again, and that just reloads the values.
         if (!uiBuilt)
             buildUI();
 
         loadValues();
-
-        // Index via resolutionIndex (clamped in loadValues())
-        // rather than the raw WINDOW_RESOLUTION straight from the
-        // config file, same out-of-bounds risk as the engine
-        // crash, just on WinWidthSizes/WinHeightSizes instead.
         WinWidth = WinWidthSizes[resolutionIndex];
         WinHeight = WinHeightSizes[resolutionIndex];
 
@@ -735,8 +662,6 @@ namespace framework
 
     void update()
     {
-        // GLUI updates its own windows from GLUI_Master's idle
-        // function. This only asks for redraws just after a screen change.
         if (!uiBuilt || uiShown < 0 || glutGet(GLUT_ELAPSED_TIME) > uiRedrawUntil)
             return;
 
@@ -757,7 +682,6 @@ namespace framework
     {
         std::cout << "Game paused\n";
         gHandler.Screen.SetScreen(SCREEN_PAUSE_MENU);
-        // Show the OS cursor again so the pause menu is clickable.
         glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
     }
 
@@ -766,7 +690,6 @@ namespace framework
     {
         std::cout << "Game resumed\n";
         gHandler.Screen.SetScreen(SCREEN_GAME);
-        // Hide the OS cursor again, same as startGame().
         glutSetCursor(GLUT_CURSOR_NONE);
     }
 
@@ -819,9 +742,9 @@ namespace framework
 
     void resize(int width, int height)
     {
-        // GLUI docks its windows to the game window by itself, so
-        // they do not need the size. Kept so the Framework API
-        // stays the same.
+        
+        
+        
         (void)width;
         (void)height;
     }
@@ -833,14 +756,14 @@ namespace framework
     }
 
 
-    // ==================================================
-    // Drawing
-    // ==================================================
-    //
-    // GLUI draws its own windows.
-    //
-    // The Framework only controls which screen is shown.
-    // ==================================================
+    
+    
+    
+    
+    
+    
+    
+    
 
     void drawMainMenu()
     {

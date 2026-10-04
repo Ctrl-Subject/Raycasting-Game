@@ -22,7 +22,7 @@ namespace pathfinding
             return false;
 
         if (start == goal)
-            return true; // Already there - an empty path is a valid "no move needed" result.
+            return true; 
 
         auto index = [gridWidth](GridPos p) { return p.row * gridWidth + p.col; };
 
@@ -32,9 +32,6 @@ namespace pathfinding
         std::queue<GridPos> frontier;
         frontier.push(start);
         visited[index(start)] = true;
-
-        // 4-directional movement only - no diagonals, matching the
-        // grid-aligned corridors of the map this is used on.
         static const int kDX[4] = { 0, 0, -1, 1 };
         static const int kDY[4] = { -1, 1, 0, 0 };
 
@@ -64,8 +61,6 @@ namespace pathfinding
         if (!visited[index(goal)])
             return false;
 
-        // Walk the parent links back from goal to start, then reverse
-        // so outPath reads start-to-goal.
         std::vector<GridPos> reversePath;
         int cur = index(goal);
         while (cur != index(start))
@@ -88,10 +83,10 @@ namespace pathfinding
         std::vector<GridPos> path;
 
         if (!FindPathBFS(start, goal, gridWidth, gridHeight, isWalkable, path))
-            return start; // No path - stay put rather than walk into a wall.
+            return start;
 
         if (path.empty())
-            return start; // Already at goal.
+            return start;
 
         return path[0];
     }

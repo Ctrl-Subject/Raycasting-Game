@@ -2,9 +2,9 @@
 #define SOLARUI_EXP_H
 
 
-// **********************************************
-// *              DLL EXPORT CONTROL             *
-// **********************************************
+
+
+
 
 #ifdef _WIN32
 
@@ -25,7 +25,7 @@
 
 #else
 
-    // Linux / other platforms
+    
     #define SOLARUI_API __attribute__((visibility("default")))
 
 #endif

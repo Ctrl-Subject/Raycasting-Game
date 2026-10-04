@@ -3,28 +3,19 @@
 
 #include "../Handler/TEMPSETS.h"
 
-// ==================================================
-// Framework
-// ==================================================
+
+
+
 
 namespace framework
 {
     extern int WinWidth;
     extern int WinHeight;
 
-    // --------------------------------------------------
-    // Lifecycle
-    // --------------------------------------------------
-
     void init();
     void shutdown();
     void update();
     void resize(int width, int height);
-
-
-    // --------------------------------------------------
-    // Screen drawing / visibility
-    // --------------------------------------------------
 
     void drawMainMenu();
 
@@ -37,26 +28,11 @@ namespace framework
 
     void drawPauseMenu();
 
-    // Hides every UI window (used while SCREEN_GAME is active).
+    
     void hideUI();
-
-
-    // --------------------------------------------------
-    // Pause
-    // --------------------------------------------------
-    //
-    // Exposed so main.cpp's Escape-key handler and the pause
-    // menu's own buttons can both trigger the same transition
-    // (screen switch + cursor state) without duplicating it.
-    // --------------------------------------------------
 
     void pauseGame();
     void resumeGame();
-
-
-    // --------------------------------------------------
-    // Settings
-    // --------------------------------------------------
 
     struct Settings
     {
@@ -66,11 +42,6 @@ namespace framework
         void Save();
         void Reset();
     };
-
-
-    // --------------------------------------------------
-    // Framework object
-    // --------------------------------------------------
 
     struct Framework
     {
