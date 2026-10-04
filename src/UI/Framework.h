@@ -37,6 +37,9 @@ namespace framework
 
     void drawPauseMenu();
 
+    // Hides every UI window (used while SCREEN_GAME is active).
+    void hideUI();
+
 
     // --------------------------------------------------
     // Pause

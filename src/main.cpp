@@ -1,8 +1,57 @@
 #include "../include/GL/freeglut.h"
-#include "../include/SUI/SolarUI.h"
+#include <GL/glui.h>
 #include "UI/Framework.h"
 #include "Handler/Handler.h"
 #include "Game/Game.h"
+
+#include <cstdlib>
+
+// Id of the main game window. GLUI creates its own windows, and
+// glutPostRedisplay() only redraws whichever window is current, so
+// idle() switches back to this one first.
+static int MainWindow = 0;
+
+// Darkens whatever is already on screen with a see-through black quad,
+// used behind the pause menu so the paused game stays visible but the
+// menu stands out. alpha is 0 (no change) to 1 (fully black).
+static void dimScreen(float alpha)
+{
+    int width = glutGet(GLUT_WINDOW_WIDTH);
+    int height = glutGet(GLUT_WINDOW_HEIGHT);
+
+    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, width, height, 0.0, -1.0, 1.0);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glColor4f(0.0f, 0.0f, 0.0f, alpha);
+    glBegin(GL_QUADS);
+    glVertex2f(0.0f, 0.0f);
+    glVertex2f((float)width, 0.0f);
+    glVertex2f((float)width, (float)height);
+    glVertex2f(0.0f, (float)height);
+    glEnd();
+
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+
+    glPopAttrib();
+}
+
 
 void display()
 {
@@ -38,6 +87,11 @@ void display()
             break;
 
         case SCREEN_PAUSE_MENU:
+            // The paused game is drawn first, then dimmed, then the menu
+            // goes on top. game::update() is not called while paused (see
+            // idle()), so this is the same frozen frame every time.
+            game::render();
+            dimScreen(0.6f);
             framework::drawPauseMenu();
             break;
 
@@ -50,17 +104,13 @@ void display()
             break;
     }
 
-    // SolarUI draws all registered/visible elements.
-    // (Game screen draws its own HUD directly, so it doesn't need
-    // SolarUI's overlay - skip it there to avoid drawing stray menu
-    // elements over the raycast view. SolarUI's draw call appears to
-    // also perform the buffer swap internally, so we do that
-    // ourselves here instead when skipping it.)
-    if (gHandler.Screen.GetCurrentScreen() != SCREEN_GAME)
-        solUI_Draw();
-    else
-        glutSwapBuffers();
-    
+    // GLUI draws its own windows, so there is nothing to draw here for
+    // the menus. The game screen draws its own HUD directly and has no
+    // menu windows, so hide them all there.
+    if (gHandler.Screen.GetCurrentScreen() == SCREEN_GAME)
+        framework::hideUI();
+
+    glutSwapBuffers();
 }
 
 
@@ -79,8 +129,6 @@ void reshape(int width, int height)
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-
-    solUI_UpdateViewport(width, height);
 }
 
 
@@ -100,6 +148,7 @@ void idle()
     else
         framework::update();
 
+    glutSetWindow(MainWindow);
     glutPostRedisplay();
 }
 
@@ -107,17 +156,10 @@ void idle()
 // ==================================================
 // Mouse Input
 // ==================================================
-
-void MouseMove(int x, int y)
-{
-    solInputBridge_MouseMove(x, y);
-}
-
-
-void MouseButton(int button, int state, int x, int y)
-{
-    solInputBridge_MouseButton(button, state, x, y);
-}
+//
+// GLUI handles the mouse for its own windows. In game the mouse
+// is read by Game.cpp directly, so main.cpp has no mouse callbacks.
+// ==================================================
 
 
 // ==================================================
@@ -126,7 +168,6 @@ void MouseButton(int button, int state, int x, int y)
 
 void KeyDown(unsigned char key, int x, int y)
 {
-    solInputBridge_KeyDown(key, x, y);
     game::onKeyDown(key, x, y);
 
     if (key == 27) // Escape
@@ -150,7 +191,7 @@ void KeyDown(unsigned char key, int x, int y)
         else
         {
             // Everywhere else (main menu, settings, etc.), ESC still quits.
-            solUI_Shutdown();
+            framework::shutdown();
             std::exit(0);
         }
     }
@@ -159,21 +200,18 @@ void KeyDown(unsigned char key, int x, int y)
 
 void KeyUp(unsigned char key, int x, int y)
 {
-    solInputBridge_KeyUp(key, x, y);
     game::onKeyUp(key, x, y);
 }
 
 
 void SpecialKeyDown(int key, int x, int y)
 {
-    solInputBridge_SpecialKey(key, x, y);
     game::onSpecialKeyDown(key, x, y);
 }
 
 
 void SpecialKeyUp(int key, int x, int y)
 {
-    solInputBridge_SpecialKeyUp(key, x, y);
     game::onSpecialKeyUp(key, x, y);
 }
 
@@ -194,10 +232,10 @@ int main(int argc, char** argv)
 
     glutInitWindowSize(1280, 720);
 
-    glutCreateWindow("Raycasting Game - Framework Test");
+    MainWindow = glutCreateWindow("Raycasting Game - Framework Test");
 
 
-    // Initialise the framework/SolarUI.
+    // Initialise the framework/GLUI.
     framework::init();
 
 
@@ -212,21 +250,17 @@ int main(int argc, char** argv)
     // Display
     glutDisplayFunc(display);
 
-    // Window
-    glutReshapeFunc(reshape);
+    // Window, update and keyboard go through GLUI_Master so GLUI can
+    // share them with its own windows. Key presses made while a GLUI
+    // window has focus are still passed on to KeyDown / SpecialKeyDown.
+    GLUI_Master.set_glutReshapeFunc(reshape);
+    GLUI_Master.set_glutIdleFunc(idle);
+    GLUI_Master.set_glutKeyboardFunc(KeyDown);
+    GLUI_Master.set_glutSpecialFunc(SpecialKeyDown);
 
-    // Update
-    glutIdleFunc(idle);
-
-    // Mouse
-    glutMouseFunc(MouseButton);
-    glutMotionFunc(MouseMove);
-    glutPassiveMotionFunc(MouseMove);
-
-    // Keyboard
-    glutKeyboardFunc(KeyDown);
+    // Key releases are only needed by the game, so they stay on the
+    // main window.
     glutKeyboardUpFunc(KeyUp);
-    glutSpecialFunc(SpecialKeyDown);
     glutSpecialUpFunc(SpecialKeyUp);
 
 
@@ -235,8 +269,6 @@ int main(int argc, char** argv)
 
 
     game::shutdown();
-    solUI_Shutdown();
+    framework::shutdown();
     return 0;
 }
-
-

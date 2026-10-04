@@ -1,10 +1,11 @@
 #include "Framework.h"
 #include "../Handler/Handler.h"
-#include "../../include/SUI/SolarUI.h"
+#include <GL/glui.h>
 #include "../Game/Game.h"
 
 #include <GL/freeglut.h>
 #include <iostream>
+#include <cstdio>
 #include <cstdlib>
 #include <vector>
 
@@ -20,60 +21,134 @@ int framework::WinHeight;
 
 
 // ==================================================
-// Main Menu
-// ==================================================
-
-static solLabel  mainMenuTitle;
-static solButton startButton;
-static solButton settingsButton;
-static solButton exitButton;
-
-
-// ==================================================
 // Settings
 // ==================================================
 
 framework::Settings Settings;
 
 
-// Settings menu
-static solLabel  settingsTitle;
-static solButton displaySettings;
-static solButton controlsSettings;
-static solButton audioSettings;
-static solButton saveButton;
-static solButton resetButton;
-static solButton helpButton;
-static solButton backButton;
+// ==================================================
+// Screens
+// ==================================================
+//
+// Same screens and the same layout as the SolarUI version: a
+// column of 200px wide buttons on the left, and the page for the
+// current screen to the right of it (Display and Graphics as two
+// columns, then Controls, Audio and Help).
+//
+// GLUI lays widgets out itself, so each screen is one GLUI window
+// docked to the left of the game window, with the widgets in the
+// same order and the same columns as before. Only one is shown at
+// a time.
+// ==================================================
+
+enum UiWindow
+{
+    WIN_MAIN_MENU,
+    WIN_SETTINGS,
+    WIN_DISPLAY,
+    WIN_CONTROLS,
+    WIN_AUDIO,
+    WIN_HELP,
+    WIN_PAUSE,
+    WIN_COUNT
+};
+
+// One panel per screen, all inside a single GLUI window. Only the
+// panel for the current screen is linked into the window, the others
+// are unlinked, so the window is only ever as big as the current screen.
+// GLUI's unlink() also forgets the panel's own children, and a node's
+// child list is protected. NodeAccess reads and writes it the same way a
+// subclass of the node could, so a screen can be unlinked and linked
+// back with its controls intact.
+struct NodeAccess : public GLUI_Node
+{
+    static GLUI_Node*& head(GLUI_Node* node) { return static_cast<NodeAccess*>(node)->child_head; }
+    static GLUI_Node*& tail(GLUI_Node* node) { return static_cast<NodeAccess*>(node)->child_tail; }
+};
+
+static GLUI*       uiWindow = NULL;
+static GLUI_Panel* uiRoot = NULL;
+static GLUI_Panel* uiScreens[WIN_COUNT];
+static GLUI_Node*  uiSavedHead[WIN_COUNT];
+static GLUI_Node*  uiSavedTail[WIN_COUNT];
+static int         uiShown = -1;
+static bool        uiBuilt = false;
+
+// GLUI resizes its window a moment after a screen change and does not
+// always redraw it afterwards, so update() keeps asking for a redraw
+// for a short while after every change.
+static int         uiRedrawUntil = 0;
+
+// Panel that the helpers below add controls to.
+static GLUI_Panel*  uiPanel = NULL;
 
 
 // ==================================================
+// Control ids (passed to the GLUI callback)
+// ==================================================
+
+enum ControlId
+{
+    ID_START = 1,
+    ID_SETTINGS,
+    ID_DISPLAY,
+    ID_CONTROLS,
+    ID_AUDIO,
+    ID_SAVE,
+    ID_RESET,
+    ID_HELP,
+    ID_BACK,
+    ID_EXIT,
+    ID_RESUME,
+    ID_PAUSE_MAIN_MENU,
+    ID_PAUSE_EXIT,
+
+    ID_SLIDER_BASE = 100
+};
+
+
+// ==================================================
+// Live values
+// ==================================================
+//
+// GLUI controls write straight into these variables, so they
+// take the place of the old Checked / CurrentValue /
+// SelectedIndex fields.
+// ==================================================
+
 // Display Settings
+static int   resolutionIndex = 0;
+static int   fullscreenChecked = 0;
+static int   borderlessFullscreenChecked = 0;
+static float gammaValue = 50.0f;
+static float fovValue = 90.0f;
+static int   engineIndex = 0;
+
+// Graphics
+static int   showAvatarsChecked = 0;
+static int   showTexturesChecked = 0;
+static float framerateValue = 60.0f;
+static int   vsyncChecked = 0;
+static int   antiAliasingChecked = 0;
+static int   motionBlurChecked = 0;
+
+// Controls Settings
+static float mouseSensitivityValue = 1.0f;
+static int   invertMouseXChecked = 0;
+static int   invertMouseYChecked = 0;
+static int   mouseOnChecked = 0;
+
+// Audio Settings
+static float masterVolumeValue = 100.0f;
+static float lobbyMusicVolumeValue = 100.0f;
+static float inGameMusicVolumeValue = 100.0f;
+static float sfxVolumeValue = 100.0f;
+
+
 // ==================================================
-
-static solLabel     displaySettingsTitle;
-static solDropdown  resolution;
-
-static solCheckbox  fullscreenCheckbox;
-static solCheckbox  borderlessFullscreenCheckbox;
-
-static solSlider    gammaSlider;
-static solSlider    fovSlider;
-
-static solDropdown  Engine;
-
-static solLabel     graphicsSettingsTitle;
-
-static solCheckbox  showAvatarsCheckbox;
-static solCheckbox  showTexturesCheckbox;
-
-static solSlider    framerateSlider;
-
-static solCheckbox  vsyncCheckbox;
-static solCheckbox  antiAliasingCheckbox;
-static solCheckbox  motionBlurCheckbox;
-
 // Options
+// ==================================================
 
 const char* resolutions[] =
 {
@@ -88,47 +163,24 @@ const char* engines[] =
     "RCUT2.5-PR1"
 };
 
-// ==================================================
-// Controls Settings
-// ==================================================
-
-static solLabel    controlsSettingsTitle;
-static solLabel    Controls_NA;
-
-static solSlider   MouseSensitivitySlider;
-
-static solCheckbox InvertMouseXCheckbox;
-static solCheckbox InvertMouseYSlider;
-static solCheckbox MouseONCheckbox;
-
 
 // ==================================================
-// Audio Settings
+// Sliders
+// ==================================================
+//
+// GLUI has no slider widget, so a slider is a horizontal scrollbar
+// with the name and current value shown above it (the scrollbar's
+// callback keeps that text up to date).
 // ==================================================
 
-static solLabel  audioSettingsTitle;
+struct SliderInfo
+{
+    GLUI_StaticText* text;
+    const char*      name;
+    float*           value;
+};
 
-static solSlider masterVolumeSlider;
-static solSlider lobbyMusicVolumeSlider;
-static solSlider inGameMusicVolumeSlider;
-static solSlider sfxVolumeSlider;
-
-
-// ==================================================
-// Help
-// ==================================================
-
-static solLabel helpTitle;
-
-
-// ==================================================
-// Pause Menu
-// ==================================================
-
-static solLabel  pauseMenuTitle;
-static solButton resumeButton;
-static solButton pauseMainMenuButton;
-static solButton pauseExitButton;
+static std::vector<SliderInfo> sliders;
 
 
 // ==================================================
@@ -137,289 +189,13 @@ static solButton pauseExitButton;
 
 namespace
 {
-    void addAllElements()
+    // Keeps a loaded index inside the option list, same job
+    // solDropdown_SetSelectedIndex used to do for us.
+    int clampIndex(int index, int count)
     {
-        // --------------------------------------------------
-        // Main menu
-        // --------------------------------------------------
-
-        solUI_AddElement(&mainMenuTitle.Element);
-        solUI_AddElement(&startButton.Element);
-        solUI_AddElement(&settingsButton.Element);
-        solUI_AddElement(&exitButton.Element);
-
-
-        // --------------------------------------------------
-        // Settings menu
-        // --------------------------------------------------
-
-        solUI_AddElement(&settingsTitle.Element);
-        solUI_AddElement(&displaySettings.Element);
-        solUI_AddElement(&controlsSettings.Element);
-        solUI_AddElement(&audioSettings.Element);
-        solUI_AddElement(&saveButton.Element);
-        solUI_AddElement(&resetButton.Element);
-        solUI_AddElement(&helpButton.Element);
-        solUI_AddElement(&backButton.Element);
-
-
-        // --------------------------------------------------
-        // Display settings
-        // --------------------------------------------------
-
-        solUI_AddElement(&displaySettingsTitle.Element);
-        solUI_AddElement(&resolution.Element);
-        solUI_AddElement(&fullscreenCheckbox.Element);
-        solUI_AddElement(&borderlessFullscreenCheckbox.Element);
-        solUI_AddElement(&gammaSlider.Element);
-        solUI_AddElement(&fovSlider.Element);
-        solUI_AddElement(&Engine.Element);
-
-        solUI_AddElement(&graphicsSettingsTitle.Element);
-        solUI_AddElement(&showAvatarsCheckbox.Element);
-        solUI_AddElement(&showTexturesCheckbox.Element);
-        solUI_AddElement(&framerateSlider.Element);
-        solUI_AddElement(&vsyncCheckbox.Element);
-        solUI_AddElement(&antiAliasingCheckbox.Element);
-        solUI_AddElement(&motionBlurCheckbox.Element);
-
-
-        // --------------------------------------------------
-        // Controls settings
-        // --------------------------------------------------
-
-        solUI_AddElement(&controlsSettingsTitle.Element);
-        solUI_AddElement(&Controls_NA.Element);
-        solUI_AddElement(&MouseSensitivitySlider.Element);
-        solUI_AddElement(&InvertMouseXCheckbox.Element);
-        solUI_AddElement(&InvertMouseYSlider.Element);
-        solUI_AddElement(&MouseONCheckbox.Element);
-
-
-        // --------------------------------------------------
-        // Audio settings
-        // --------------------------------------------------
-
-        solUI_AddElement(&audioSettingsTitle.Element);
-        solUI_AddElement(&masterVolumeSlider.Element);
-        solUI_AddElement(&lobbyMusicVolumeSlider.Element);
-        solUI_AddElement(&inGameMusicVolumeSlider.Element);
-        solUI_AddElement(&sfxVolumeSlider.Element);
-
-
-        // --------------------------------------------------
-        // Help
-        // --------------------------------------------------
-
-        solUI_AddElement(&helpTitle.Element);
-
-
-        // --------------------------------------------------
-        // Pause menu
-        // --------------------------------------------------
-
-        solUI_AddElement(&pauseMenuTitle.Element);
-        solUI_AddElement(&resumeButton.Element);
-        solUI_AddElement(&pauseMainMenuButton.Element);
-        solUI_AddElement(&pauseExitButton.Element);
-    }
-
-
-    void initElements()
-    {
-        // ==================================================
-        // Main menu
-        // ==================================================
-
-        solLabel_Init(&mainMenuTitle, "3D PacMan", 50, 50);
-
-        solButton_Init(&startButton, "Start Game", 50, 75, 200, 50);
-        solButton_Init(&settingsButton, "Settings", 50, 150, 200, 50);
-        solButton_Init(&exitButton, "Exit", 50, 225, 200, 50);
-
-
-        // ==================================================
-        // Settings menu
-        // ==================================================
-
-        solLabel_Init(&settingsTitle, "3D PacMan - Settings", 50, 50);
-
-        solButton_Init(&displaySettings, "Display", 50, 75, 200, 50);
-        solButton_Init(&controlsSettings, "Controls", 50, 150, 200, 50);
-        solButton_Init(&audioSettings, "Audio", 50, 225, 200, 50);
-        solButton_Init(&saveButton, "Save", 50, 300, 200, 50);
-        solButton_Init(&resetButton, "Reset", 50, 375, 200, 50);
-        solButton_Init(&helpButton, "Help", 50, 450, 200, 50);
-        solButton_Init(&backButton, "Back", 50, 525, 200, 50);
-
-
-        // ==================================================
-        // Display settings
-        // ==================================================
-
-        solLabel_Init(&displaySettingsTitle, "Display", 300, 100);
-        solDropdown_Init(&resolution, "Resolution", resolutions, 4, 300, 150, 200, 25);
-        solCheckbox_Init(&fullscreenCheckbox, "Fullscreen", 300, 200, 20, 20);
-        solCheckbox_Init(&borderlessFullscreenCheckbox, "Borderless Fullscreen", 300, 250, 20, 20);
-        solSlider_Init(&gammaSlider, "Gamma", 300, 300, 200, 20, 0.0f, 100.0f, 50.0f);
-        solSlider_Init(&fovSlider, "Field of View", 300, 350, 200, 20, 0.0f, 180.0f, 90.0f);
-        solDropdown_Init(&Engine, "Engine", engines, 1, 300, 400, 200, 25);
-
-        solLabel_Init(&graphicsSettingsTitle, "Graphics", 600, 100);
-        solCheckbox_Init(&showAvatarsCheckbox, "Display Avatars", 600, 200, 20, 20);
-        solCheckbox_Init(&showTexturesCheckbox, "Display WallTextures", 600, 250, 20, 20);
-        solSlider_Init(&framerateSlider, "Framerate Limit", 600, 300, 200, 20, 0.0f, 240.0f, 60.0f);
-        solCheckbox_Init(&vsyncCheckbox, "V-Sync", 600, 350, 20, 20);
-        solCheckbox_Init(&antiAliasingCheckbox, "Anti-Aliasing", 600, 400, 20, 20);
-        solCheckbox_Init(&motionBlurCheckbox, "Motion Blur", 600, 450, 20, 20);
-
-        // ==================================================
-        // Controls settings
-        // ==================================================
-
-        solLabel_Init(&controlsSettingsTitle, "Controls", 300, 100);
-
-        solLabel_Init(
-            &Controls_NA,
-            "W = Forward, \nA = Strafe Left, \nS = Back, \nD = Strafe Right, \nMouse for looking",
-            500,
-            250
-        );
-
-        solSlider_Init(&MouseSensitivitySlider, "Mouse Sensitivity", 300, 150, 200, 20, 0.0f, 100.0f, 1.0f);
-
-        solCheckbox_Init(&InvertMouseXCheckbox, "Invert Mouse X-Axis", 300, 200, 20, 20);
-        solCheckbox_Init(&InvertMouseYSlider, "Invert Mouse Y-Axis", 300, 250, 20, 20);
-        solCheckbox_Init(&MouseONCheckbox, "Use Mouse?", 300,300, 20, 20);
-
-
-        // ==================================================
-        // Audio settings
-        // ==================================================
-
-        solLabel_Init(&audioSettingsTitle, "Audio", 300, 100);
-
-        solSlider_Init(&masterVolumeSlider, "Master Volume", 300, 150, 200, 20, 0.0f, 100.0f, 100.0f);
-        solSlider_Init(&lobbyMusicVolumeSlider, "Lobby Music Volume", 300, 200, 200, 20, 0.0f, 100.0f, 100.0f);
-        solSlider_Init(&inGameMusicVolumeSlider, "Game Music Volume", 300, 250, 200, 20, 0.0f, 100.0f, 100.0f);
-        solSlider_Init(&sfxVolumeSlider, "Sound Effects Volume", 300, 300, 200, 20, 0.0f, 100.0f, 100.0f);
-
-
-        // ==================================================
-        // Help
-        // ==================================================
-
-        solLabel_Init(&helpTitle, "Help", 300, 100);
-
-
-        // ==================================================
-        // Pause menu
-        // ==================================================
-
-        solLabel_Init(&pauseMenuTitle, "Paused", 50, 50);
-
-        solButton_Init(&resumeButton, "Resume", 50, 75, 200, 50);
-        solButton_Init(&pauseMainMenuButton, "Main Menu", 50, 150, 200, 50);
-        solButton_Init(&pauseExitButton, "Exit", 50, 225, 200, 50);
-    }
-
-    
-    void hideAllElements()
-    {
-        // ==================================================
-        // Main menu
-        // ==================================================
-
-        mainMenuTitle.Element.Visibility = SOL_HIDDEN;
-        startButton.Element.Visibility = SOL_HIDDEN;
-        settingsButton.Element.Visibility = SOL_HIDDEN;
-        exitButton.Element.Visibility = SOL_HIDDEN;
-
-
-        // ==================================================
-        // Settings menu
-        // ==================================================
-
-        settingsTitle.Element.Visibility = SOL_HIDDEN;
-        displaySettings.Element.Visibility = SOL_HIDDEN;
-        controlsSettings.Element.Visibility = SOL_HIDDEN;
-        audioSettings.Element.Visibility = SOL_HIDDEN;
-        saveButton.Element.Visibility = SOL_HIDDEN;
-        resetButton.Element.Visibility = SOL_HIDDEN;    
-        helpButton.Element.Visibility = SOL_HIDDEN;
-        backButton.Element.Visibility = SOL_HIDDEN;
-
-
-        // ==================================================
-        // Display settings
-        // ==================================================
-
-        displaySettingsTitle.Element.Visibility = SOL_HIDDEN;
-
-        resolution.Element.Visibility = SOL_HIDDEN;
-
-        fullscreenCheckbox.Element.Visibility = SOL_HIDDEN;
-        borderlessFullscreenCheckbox.Element.Visibility = SOL_HIDDEN;
-
-        gammaSlider.Element.Visibility = SOL_HIDDEN;
-        fovSlider.Element.Visibility = SOL_HIDDEN;
-
-        Engine.Element.Visibility = SOL_HIDDEN;
-
-        graphicsSettingsTitle.Element.Visibility = SOL_HIDDEN;
-
-        showAvatarsCheckbox.Element.Visibility = SOL_HIDDEN;
-        showTexturesCheckbox.Element.Visibility = SOL_HIDDEN;
-
-        framerateSlider.Element.Visibility = SOL_HIDDEN;
-
-        vsyncCheckbox.Element.Visibility = SOL_HIDDEN;
-        antiAliasingCheckbox.Element.Visibility = SOL_HIDDEN;
-        motionBlurCheckbox.Element.Visibility = SOL_HIDDEN;
-
-
-        // ==================================================
-        // Controls settings
-        // ==================================================
-
-        controlsSettingsTitle.Element.Visibility = SOL_HIDDEN;
-
-        Controls_NA.Element.Visibility = SOL_HIDDEN;
-
-        MouseSensitivitySlider.Element.Visibility = SOL_HIDDEN;
-
-        InvertMouseXCheckbox.Element.Visibility = SOL_HIDDEN;
-        InvertMouseYSlider.Element.Visibility = SOL_HIDDEN;
-        MouseONCheckbox.Element.Visibility = SOL_HIDDEN;
-
-
-        // ==================================================
-        // Audio settings
-        // ==================================================
-
-        audioSettingsTitle.Element.Visibility = SOL_HIDDEN;
-
-        masterVolumeSlider.Element.Visibility = SOL_HIDDEN;
-        lobbyMusicVolumeSlider.Element.Visibility = SOL_HIDDEN;
-        inGameMusicVolumeSlider.Element.Visibility = SOL_HIDDEN;
-        sfxVolumeSlider.Element.Visibility = SOL_HIDDEN;
-
-
-        // ==================================================
-        // Help
-        // ==================================================
-
-        helpTitle.Element.Visibility = SOL_HIDDEN;
-
-
-        // ==================================================
-        // Pause menu
-        // ==================================================
-
-        pauseMenuTitle.Element.Visibility = SOL_HIDDEN;
-        resumeButton.Element.Visibility = SOL_HIDDEN;
-        pauseMainMenuButton.Element.Visibility = SOL_HIDDEN;
-        pauseExitButton.Element.Visibility = SOL_HIDDEN;
+        if (index < 0)       return 0;
+        if (index >= count)  return count - 1;
+        return index;
     }
 
 
@@ -508,28 +284,376 @@ namespace
 
 
     // ==================================================
-    // Assign callbacks
+    // Slider text
     // ==================================================
 
-    void setupCallbacks()
+    void updateSliderText(const SliderInfo& slider)
     {
-        solButton_SetCallback(&startButton, startGame);
-        solButton_SetCallback(&settingsButton, openSettings);
-        solButton_SetCallback(&displaySettings, openDisplaySettings);
-        solButton_SetCallback(&controlsSettings, openControlsSettings);
-        solButton_SetCallback(&audioSettings, openAudioSettings);
-        solButton_SetCallback(&helpButton, openHelp);
-        solButton_SetCallback(&backButton, goBack);
-        solButton_SetCallback(&resetButton, resetSettings);
-        solButton_SetCallback(&saveButton, saveSettings);
-        solButton_SetCallback(&exitButton, exitGame);
+        char buffer[96];
+        std::snprintf(buffer, sizeof(buffer), "%s: %d", slider.name, (int)(*slider.value + 0.5f));
+        slider.text->set_text(buffer);
+    }
 
-        // pauseGame/resumeGame live in namespace framework (declared
-        // in Framework.h, defined further down) rather than in this
-        // anonymous namespace, so they're qualified here.
-        solButton_SetCallback(&resumeButton, framework::resumeGame);
-        solButton_SetCallback(&pauseMainMenuButton, pauseGoToMainMenu);
-        solButton_SetCallback(&pauseExitButton, exitGame);
+    void updateAllSliderText()
+    {
+        for (const SliderInfo& slider : sliders)
+            updateSliderText(slider);
+    }
+
+
+    // ==================================================
+    // GLUI callback
+    // ==================================================
+    //
+    // GLUI gives every control one int callback, so each button
+    // passes its id here and this forwards to the same functions
+    // the SolarUI buttons used to call directly.
+    // ==================================================
+
+    void onControl(int id)
+    {
+        if (id >= ID_SLIDER_BASE)
+        {
+            size_t index = (size_t)(id - ID_SLIDER_BASE);
+
+            if (index < sliders.size())
+                updateSliderText(sliders[index]);
+
+            return;
+        }
+
+        switch (id)
+        {
+            case ID_START:          startGame();                break;
+            case ID_SETTINGS:       openSettings();             break;
+            case ID_DISPLAY:        openDisplaySettings();      break;
+            case ID_CONTROLS:       openControlsSettings();     break;
+            case ID_AUDIO:          openAudioSettings();        break;
+            case ID_SAVE:           saveSettings();             break;
+            case ID_RESET:          resetSettings();            break;
+            case ID_HELP:           openHelp();                 break;
+            case ID_BACK:           goBack();                   break;
+            case ID_EXIT:           exitGame();                 break;
+
+            // pauseGame/resumeGame live in namespace framework
+            // (declared in Framework.h, defined further down)
+            // rather than in this anonymous namespace, so they
+            // are qualified here.
+            case ID_RESUME:         framework::resumeGame();    break;
+            case ID_PAUSE_MAIN_MENU: pauseGoToMainMenu();       break;
+            case ID_PAUSE_EXIT:     exitGame();                 break;
+
+            default: break;
+        }
+    }
+
+
+    // ==================================================
+    // Building the screens
+    // ==================================================
+
+    const int kButtonW = 200;
+    const int kButtonH = 50;
+
+    // The old layout had 25px between buttons and 50px between the
+    // rows of each page. Static text rows stand in for that spacing.
+    void spacer(GLUI* window, int rows = 1)
+    {
+        for (int i = 0; i < rows; i++)
+            window->add_statictext(" ");
+    }
+
+
+    void spacer(int rows = 1)
+    {
+        for (int i = 0; i < rows; i++)
+            uiWindow->add_statictext_to_panel(uiPanel, " ");
+    }
+
+    void addLabel(const char* text)
+    {
+        uiWindow->add_statictext_to_panel(uiPanel, text);
+    }
+
+    void addColumn()
+    {
+        uiWindow->add_column_to_panel(uiPanel, false);
+    }
+
+    void addButton(const char* name, int id)
+    {
+        GLUI_Button* button = uiWindow->add_button_to_panel(uiPanel, name, id, onControl);
+        button->set_w(kButtonW);
+        spacer();
+    }
+
+    void addCheckbox(const char* name, int* value)
+    {
+        uiWindow->add_checkbox_to_panel(uiPanel, name, value);
+        spacer(2);
+    }
+
+    void addSlider(const char* name, float* value, float low, float high)
+    {
+        SliderInfo info;
+        info.name  = name;
+        info.value = value;
+        info.text  = uiWindow->add_statictext_to_panel(uiPanel, name);
+
+        int id = ID_SLIDER_BASE + (int)sliders.size();
+
+        GLUI_Scrollbar* bar = new GLUI_Scrollbar(uiPanel, name, GLUI_SCROLL_HORIZONTAL,
+                                                 value, id, onControl);
+        bar->set_float_limits(low, high);
+        bar->set_w(200);
+
+        sliders.push_back(info);
+        updateSliderText(info);
+
+        spacer(2);
+    }
+
+    void addListbox(const char* name, int* value, const char** options, int count)
+    {
+        GLUI_Listbox* listbox = uiWindow->add_listbox_to_panel(uiPanel, name, value);
+        listbox->set_w(200);
+
+        for (int i = 0; i < count; i++)
+            listbox->add_item(i, options[i]);
+
+        spacer(2);
+    }
+
+
+    // Starts a screen: a panel of its own inside the window.
+    void beginScreen(UiWindow which)
+    {
+        uiScreens[which] = uiWindow->add_panel_to_panel(uiRoot, "", GLUI_PANEL_NONE);
+        uiPanel = uiScreens[which];
+    }
+
+
+    // Title label plus the column of buttons every Settings screen has.
+    void addSettingsColumn()
+    {
+        addLabel("3D PacMan - Settings");
+        spacer();
+
+        addButton("Display",  ID_DISPLAY);
+        addButton("Controls", ID_CONTROLS);
+        addButton("Audio",    ID_AUDIO);
+        addButton("Save",     ID_SAVE);
+        addButton("Reset",    ID_RESET);
+        addButton("Help",     ID_HELP);
+        addButton("Back",     ID_BACK);
+    }
+
+
+    void detachScreen(int which)
+    {
+        GLUI_Panel* panel = uiScreens[which];
+
+        uiSavedHead[which] = NodeAccess::head(panel);
+        uiSavedTail[which] = NodeAccess::tail(panel);
+
+        panel->unlink();
+    }
+
+    void attachScreen(int which)
+    {
+        GLUI_Panel* panel = uiScreens[which];
+
+        panel->link_this_to_parent_last(uiRoot);
+
+        NodeAccess::head(panel) = uiSavedHead[which];
+        NodeAccess::tail(panel) = uiSavedTail[which];
+    }
+
+
+    void buildUI()
+    {
+        int mainWindow = glutGetWindow();
+
+        uiWindow = GLUI_Master.create_glui_subwindow(mainWindow, GLUI_SUBWINDOW_LEFT);
+        uiWindow->set_main_gfx_window(mainWindow);
+
+        uiRoot = uiWindow->add_panel("", GLUI_PANEL_NONE);
+
+
+        // ==================================================
+        // Main menu
+        // ==================================================
+
+        beginScreen(WIN_MAIN_MENU);
+        addLabel("3D PacMan");
+        spacer();
+        addButton("Start Game", ID_START);
+        addButton("Settings",   ID_SETTINGS);
+        addButton("Exit",       ID_EXIT);
+
+
+        // ==================================================
+        // Settings menu
+        // ==================================================
+
+        beginScreen(WIN_SETTINGS);
+        addSettingsColumn();
+
+
+        // ==================================================
+        // Display settings (Display column and Graphics column)
+        // ==================================================
+
+        beginScreen(WIN_DISPLAY);
+        addSettingsColumn();
+
+        addColumn();
+
+        addLabel("Display");
+        spacer();
+        addListbox("Resolution", &resolutionIndex, resolutions, 4);
+        addCheckbox("Fullscreen", &fullscreenChecked);
+        addCheckbox("Borderless Fullscreen", &borderlessFullscreenChecked);
+        addSlider("Gamma", &gammaValue, 0.0f, 100.0f);
+        addSlider("Field of View", &fovValue, 0.0f, 180.0f);
+        addListbox("Engine", &engineIndex, engines, 1);
+
+        addColumn();
+
+        addLabel("Graphics");
+        spacer();
+        addCheckbox("Display Avatars", &showAvatarsChecked);
+        addCheckbox("Display WallTextures", &showTexturesChecked);
+        addSlider("Framerate Limit", &framerateValue, 0.0f, 240.0f);
+        addCheckbox("V-Sync", &vsyncChecked);
+        addCheckbox("Anti-Aliasing", &antiAliasingChecked);
+        addCheckbox("Motion Blur", &motionBlurChecked);
+
+
+        // ==================================================
+        // Controls settings
+        // ==================================================
+
+        beginScreen(WIN_CONTROLS);
+        addSettingsColumn();
+
+        addColumn();
+
+        addLabel("Controls");
+        spacer();
+        addSlider("Mouse Sensitivity", &mouseSensitivityValue, 0.0f, 100.0f);
+        addCheckbox("Invert Mouse X-Axis", &invertMouseXChecked);
+        addCheckbox("Invert Mouse Y-Axis", &invertMouseYChecked);
+        addCheckbox("Use Mouse?", &mouseOnChecked);
+
+        addColumn();
+
+        spacer(3);
+        addLabel("W = Forward,");
+        addLabel("A = Strafe Left,");
+        addLabel("S = Back,");
+        addLabel("D = Strafe Right,");
+        addLabel("Mouse for looking");
+
+
+        // ==================================================
+        // Audio settings
+        // ==================================================
+
+        beginScreen(WIN_AUDIO);
+        addSettingsColumn();
+
+        addColumn();
+
+        addLabel("Audio");
+        spacer();
+        addSlider("Master Volume", &masterVolumeValue, 0.0f, 100.0f);
+        addSlider("Lobby Music Volume", &lobbyMusicVolumeValue, 0.0f, 100.0f);
+        addSlider("Game Music Volume", &inGameMusicVolumeValue, 0.0f, 100.0f);
+        addSlider("Sound Effects Volume", &sfxVolumeValue, 0.0f, 100.0f);
+
+
+        // ==================================================
+        // Help
+        // ==================================================
+
+        beginScreen(WIN_HELP);
+        addSettingsColumn();
+
+        addColumn();
+        addLabel("Help");
+
+
+        // ==================================================
+        // Pause menu
+        // ==================================================
+
+        beginScreen(WIN_PAUSE);
+        addLabel("Paused");
+        spacer();
+        addButton("Resume",    ID_RESUME);
+        addButton("Main Menu", ID_PAUSE_MAIN_MENU);
+        addButton("Exit",      ID_PAUSE_EXIT);
+
+
+        // Everything starts unlinked and the window hidden, the draw
+        // functions show the screen that is current.
+        for (int i = 0; i < WIN_COUNT; i++)
+            detachScreen(i);
+
+        uiWindow->refresh();
+        uiWindow->hide();
+
+        uiShown = -1;
+        uiBuilt = true;
+
+        glutSetWindow(mainWindow);
+    }
+
+
+    // ==================================================
+    // Visibility
+    // ==================================================
+    //
+    // The display callback asks for a screen every frame, so
+    // this only changes anything when the screen changes.
+    // ==================================================
+
+    void showOnly(int which)
+    {
+        if (!uiBuilt || which == uiShown)
+            return;
+
+        int current = glutGetWindow();
+
+        if (uiShown >= 0)
+            detachScreen(uiShown);
+
+        if (which >= 0)
+        {
+            attachScreen(which);
+
+            // Controls of unlinked screens miss loadValues(), so read the
+            // live values in again.
+            uiWindow->sync_live();
+            updateAllSliderText();
+
+            uiWindow->refresh();
+            uiWindow->show();
+
+            // Redraw the window at its new size.
+            uiRedrawUntil = glutGet(GLUT_ELAPSED_TIME) + 600;
+            glutSetWindow(uiWindow->get_glut_window_id());
+            glutPostRedisplay();
+        }
+        else
+        {
+            uiWindow->hide();
+        }
+
+        uiShown = which;
+
+        glutSetWindow(current);
     }
 
 
@@ -539,34 +663,41 @@ namespace
 
     int loadValues()
     {
-        solDropdown_SetSelectedIndex(&resolution, WINDOW_RESOLUTION);
+        resolutionIndex = clampIndex(WINDOW_RESOLUTION, 4);
 
-        fullscreenCheckbox.Checked = FULL_SCREEN_SETTING;
-        borderlessFullscreenCheckbox.Checked = BORDERLESS_SETTING;
+        fullscreenChecked = FULL_SCREEN_SETTING;
+        borderlessFullscreenChecked = BORDERLESS_SETTING;
 
-        gammaSlider.CurrentValue = GAMMA_SETTING;
-        fovSlider.CurrentValue = FOV_SETTING;
+        gammaValue = GAMMA_SETTING;
+        fovValue = FOV_SETTING;
 
-        solDropdown_SetSelectedIndex(&Engine, ENGINE_TYPE);
+        engineIndex = clampIndex(ENGINE_TYPE, 1);
 
-        showAvatarsCheckbox.Checked = AVATARSHOW_SETTING;
-        showTexturesCheckbox.Checked = TEXTURESHOW_SETTING;
+        showAvatarsChecked = AVATARSHOW_SETTING;
+        showTexturesChecked = TEXTURESHOW_SETTING;
 
-        framerateSlider.CurrentValue = FRAMERATE_SETTING;
+        framerateValue = (float)FRAMERATE_SETTING;
 
-        vsyncCheckbox.Checked = VSYNC_SETTING;
-        antiAliasingCheckbox.Checked = ANTIALIASING_SETTING;
-        motionBlurCheckbox.Checked = MOTIONBLUR_SETTING;
+        vsyncChecked = VSYNC_SETTING;
+        antiAliasingChecked = ANTIALIASING_SETTING;
+        motionBlurChecked = MOTIONBLUR_SETTING;
 
-        MouseSensitivitySlider.CurrentValue = MOUSE_SENSITIVITY_SETTING;
-        InvertMouseXCheckbox.Checked = INVERT_MOUSE_X_SETTING;
-        InvertMouseYSlider.Checked = INVERT_MOUSE_Y_SETTING;
-        MouseONCheckbox.Checked = USE_MOUSE_SETTING;
+        mouseSensitivityValue = MOUSE_SENSITIVITY_SETTING;
+        invertMouseXChecked = INVERT_MOUSE_X_SETTING;
+        invertMouseYChecked = INVERT_MOUSE_Y_SETTING;
+        mouseOnChecked = USE_MOUSE_SETTING;
 
-        masterVolumeSlider.CurrentValue = MASTER_VOL;
-        lobbyMusicVolumeSlider.CurrentValue = LOBBY_VOL;
-        inGameMusicVolumeSlider.CurrentValue = GAME_VOL;
-        sfxVolumeSlider.CurrentValue = SFX_VOL;
+        masterVolumeValue = MASTER_VOL;
+        lobbyMusicVolumeValue = LOBBY_VOL;
+        inGameMusicVolumeValue = GAME_VOL;
+        sfxVolumeValue = SFX_VOL;
+
+        // Push the new values into the controls.
+        if (uiBuilt)
+        {
+            GLUI_Master.sync_live_all();
+            updateAllSliderText();
+        }
 
         return 0;
     }
@@ -581,27 +712,21 @@ namespace framework
 {
     void init()
     {
-        solUI_Init();
-
-        solUI_SetLogicalSize(1280.0f, 720.0f);
-
-        solUI_SetFont(solFont{GLUT_BITMAP_TIMES_ROMAN_24,24.0f});
-
         gHandler.Settings.Load();
 
-        initElements();
-        setupCallbacks();
-        addAllElements();
+        // The windows are only built once. Reset() calls init()
+        // again, and that just reloads the values.
+        if (!uiBuilt)
+            buildUI();
 
         loadValues();
 
-        // Index via resolution.SelectedIndex (clamped by
-        // solDropdown_SetSelectedIndex in loadValues()) rather
-        // than the raw WINDOW_RESOLUTION straight from the config
-        // file - same out-of-bounds risk as the engine crash,
-        // just on WinWidthSizes/WinHeightSizes instead.
-        WinWidth = WinWidthSizes[resolution.SelectedIndex];
-        WinHeight = WinHeightSizes[resolution.SelectedIndex];
+        // Index via resolutionIndex (clamped in loadValues())
+        // rather than the raw WINDOW_RESOLUTION straight from the
+        // config file, same out-of-bounds risk as the engine
+        // crash, just on WinWidthSizes/WinHeightSizes instead.
+        WinWidth = WinWidthSizes[resolutionIndex];
+        WinHeight = WinHeightSizes[resolutionIndex];
 
         gHandler.Screen.Init();
         gHandler.Screen.SetScreen(SCREEN_MAIN_MENU);
@@ -610,13 +735,21 @@ namespace framework
 
     void update()
     {
-        solUI_Update();
+        // GLUI updates its own windows from GLUI_Master's idle
+        // function. This only asks for redraws just after a screen change.
+        if (!uiBuilt || uiShown < 0 || glutGet(GLUT_ELAPSED_TIME) > uiRedrawUntil)
+            return;
+
+        int current = glutGetWindow();
+        glutSetWindow(uiWindow->get_glut_window_id());
+        glutPostRedisplay();
+        glutSetWindow(current);
     }
 
 
     void shutdown()
     {
-        solUI_Shutdown();
+        GLUI_Master.close_all();
     }
 
 
@@ -640,37 +773,37 @@ namespace framework
 
     void Settings::Save()
     {
-        WINDOW_RESOLUTION = resolution.SelectedIndex;
+        WINDOW_RESOLUTION = resolutionIndex;
 
-        FULL_SCREEN_SETTING = fullscreenCheckbox.Checked;
-        BORDERLESS_SETTING = borderlessFullscreenCheckbox.Checked;
+        FULL_SCREEN_SETTING = fullscreenChecked != 0;
+        BORDERLESS_SETTING = borderlessFullscreenChecked != 0;
 
-        GAMMA_SETTING = gammaSlider.CurrentValue;
-        FOV_SETTING = fovSlider.CurrentValue;
+        GAMMA_SETTING = gammaValue;
+        FOV_SETTING = fovValue;
 
-        ENGINE_TYPE = Engine.SelectedIndex;
+        ENGINE_TYPE = engineIndex;
 
-        AVATARSHOW_SETTING = showAvatarsCheckbox.Checked;
-        TEXTURESHOW_SETTING = showTexturesCheckbox.Checked;
+        AVATARSHOW_SETTING = showAvatarsChecked != 0;
+        TEXTURESHOW_SETTING = showTexturesChecked != 0;
 
-        FRAMERATE_SETTING = framerateSlider.CurrentValue;
+        FRAMERATE_SETTING = (int)framerateValue;
 
-        VSYNC_SETTING = vsyncCheckbox.Checked;
-        ANTIALIASING_SETTING = antiAliasingCheckbox.Checked;
-        MOTIONBLUR_SETTING = motionBlurCheckbox.Checked;
+        VSYNC_SETTING = vsyncChecked != 0;
+        ANTIALIASING_SETTING = antiAliasingChecked != 0;
+        MOTIONBLUR_SETTING = motionBlurChecked != 0;
 
-        MOUSE_SENSITIVITY_SETTING = MouseSensitivitySlider.CurrentValue;
-        INVERT_MOUSE_X_SETTING = InvertMouseXCheckbox.Checked;
-        INVERT_MOUSE_Y_SETTING = InvertMouseYSlider.Checked;
-        USE_MOUSE_SETTING = MouseONCheckbox.Checked;
+        MOUSE_SENSITIVITY_SETTING = mouseSensitivityValue;
+        INVERT_MOUSE_X_SETTING = invertMouseXChecked != 0;
+        INVERT_MOUSE_Y_SETTING = invertMouseYChecked != 0;
+        USE_MOUSE_SETTING = mouseOnChecked != 0;
 
-        MASTER_VOL = masterVolumeSlider.CurrentValue;
-        LOBBY_VOL = lobbyMusicVolumeSlider.CurrentValue;
-        GAME_VOL = inGameMusicVolumeSlider.CurrentValue;
-        SFX_VOL = sfxVolumeSlider.CurrentValue;
+        MASTER_VOL = masterVolumeValue;
+        LOBBY_VOL = lobbyMusicVolumeValue;
+        GAME_VOL = inGameMusicVolumeValue;
+        SFX_VOL = sfxVolumeValue;
 
-        WinWidth = WinWidthSizes[resolution.SelectedIndex];
-        WinHeight = WinHeightSizes[resolution.SelectedIndex];
+        WinWidth = WinWidthSizes[resolutionIndex];
+        WinHeight = WinHeightSizes[resolutionIndex];
 
         gHandler.Settings.Save();
     }
@@ -686,7 +819,11 @@ namespace framework
 
     void resize(int width, int height)
     {
-        solUI_UpdateViewport(width, height);
+        // GLUI docks its windows to the game window by itself, so
+        // they do not need the size. Kept so the Framework API
+        // stays the same.
+        (void)width;
+        (void)height;
     }
 
 
@@ -700,106 +837,54 @@ namespace framework
     // Drawing
     // ==================================================
     //
-    // SolarUI now owns the element list and handles
-    // drawing + layering itself.
+    // GLUI draws its own windows.
     //
-    // The Framework only controls visibility.
+    // The Framework only controls which screen is shown.
     // ==================================================
 
     void drawMainMenu()
     {
-        hideAllElements();
-        mainMenuTitle.Element.Visibility = SOL_VISIBLE;
-        startButton.Element.Visibility = SOL_VISIBLE;
-        settingsButton.Element.Visibility = SOL_VISIBLE;
-        exitButton.Element.Visibility = SOL_VISIBLE;
+        showOnly(WIN_MAIN_MENU);
     }
 
 
     void drawSettings()
     {
-        hideAllElements();
-        settingsTitle.Element.Visibility = SOL_VISIBLE;
-
-        displaySettings.Element.Visibility = SOL_VISIBLE;
-        controlsSettings.Element.Visibility = SOL_VISIBLE;
-        audioSettings.Element.Visibility = SOL_VISIBLE;
-        saveButton.Element.Visibility = SOL_VISIBLE;
-        resetButton.Element.Visibility = SOL_VISIBLE;
-        helpButton.Element.Visibility = SOL_VISIBLE;
-        backButton.Element.Visibility = SOL_VISIBLE;
+        showOnly(WIN_SETTINGS);
     }
 
 
     void drawDisplaySettings()
     {
-        drawSettings();
-
-        displaySettingsTitle.Element.Visibility = SOL_VISIBLE;
-        resolution.Element.Visibility = SOL_VISIBLE;
-
-        fullscreenCheckbox.Element.Visibility = SOL_VISIBLE;
-        borderlessFullscreenCheckbox.Element.Visibility = SOL_VISIBLE;
-
-        gammaSlider.Element.Visibility = SOL_VISIBLE;
-        fovSlider.Element.Visibility = SOL_VISIBLE;
-
-        Engine.Element.Visibility = SOL_VISIBLE;
-
-        graphicsSettingsTitle.Element.Visibility = SOL_VISIBLE;
-
-        showAvatarsCheckbox.Element.Visibility = SOL_VISIBLE;
-        showTexturesCheckbox.Element.Visibility = SOL_VISIBLE;
-
-        framerateSlider.Element.Visibility = SOL_VISIBLE;
-
-        vsyncCheckbox.Element.Visibility = SOL_VISIBLE;
-        antiAliasingCheckbox.Element.Visibility = SOL_VISIBLE;
-        motionBlurCheckbox.Element.Visibility = SOL_VISIBLE;
+        showOnly(WIN_DISPLAY);
     }
 
 
     void drawControlsSettings()
     {
-        drawSettings();
-
-        controlsSettingsTitle.Element.Visibility = SOL_VISIBLE;
-        Controls_NA.Element.Visibility = SOL_VISIBLE;
-
-        MouseSensitivitySlider.Element.Visibility = SOL_VISIBLE;
-
-        InvertMouseXCheckbox.Element.Visibility = SOL_VISIBLE;
-        InvertMouseYSlider.Element.Visibility = SOL_VISIBLE;
-        MouseONCheckbox.Element.Visibility = SOL_VISIBLE;
+        showOnly(WIN_CONTROLS);
     }
 
 
     void drawAudioSettings()
     {
-        drawSettings();
-
-        audioSettingsTitle.Element.Visibility = SOL_VISIBLE;
-
-        masterVolumeSlider.Element.Visibility = SOL_VISIBLE;
-        lobbyMusicVolumeSlider.Element.Visibility = SOL_VISIBLE;
-        inGameMusicVolumeSlider.Element.Visibility = SOL_VISIBLE;
-        sfxVolumeSlider.Element.Visibility = SOL_VISIBLE;
+        showOnly(WIN_AUDIO);
     }
 
 
     void drawHelpMenu()
     {
-        drawSettings();
-
-        helpTitle.Element.Visibility = SOL_VISIBLE;
+        showOnly(WIN_HELP);
     }
 
     void drawPauseMenu()
     {
-        hideAllElements();
-        pauseMenuTitle.Element.Visibility = SOL_VISIBLE;
-        resumeButton.Element.Visibility = SOL_VISIBLE;
-        pauseMainMenuButton.Element.Visibility = SOL_VISIBLE;
-        pauseExitButton.Element.Visibility = SOL_VISIBLE;
+        showOnly(WIN_PAUSE);
+    }
+
+
+    void hideUI()
+    {
+        showOnly(-1);
     }
 }
