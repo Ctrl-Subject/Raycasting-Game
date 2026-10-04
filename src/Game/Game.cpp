@@ -88,64 +88,30 @@ namespace game
         pathfinding::GridPos scatterCorner;
     };
     static std::vector<Ghost> g_ghosts;
-
-    
-    
     
     enum class GlobalMode { SCATTER, CHASE };
     static GlobalMode g_globalMode = GlobalMode::SCATTER;
     static float      g_modeTimer = 0.0f;
     static int         g_modeIndex = 0;
 
-    
-    
-    
-    
     static const float kModeSchedule[] = { 7.0f, 20.0f, 7.0f, 20.0f, 5.0f, 20.0f, 5.0f };
 
-    
-    
-    
-    
     static bool  g_frightenedActive = false;
     static float g_frightenedTimer = 0.0f;
     static const float kFrightenedDuration = 8.0f;
-
-    
     
     struct Orb { RCUT_SpriteId spriteId; float x, y; bool big; bool collected; };
     static std::vector<Orb> g_orbs;
-
     
     static RCUT_SpriteId g_fruitSprite = -1;
     static float g_fruitX = 0, g_fruitY = 0;
     static bool  g_fruitCollected = true; 
-
     
     static RCUT_TextureId g_wallTex, g_floorTex, g_roofTex, g_doorTex;
     static RCUT_TextureId g_ghostTex[5]; 
     static RCUT_TextureId g_orbSmallTex, g_orbBigTex, g_fruitTex;
 
     static bool g_initialised = false;
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     static bool  g_mouseReady = false;
     static int   g_mouseLastX = 0, g_mouseLastY = 0; 
@@ -186,13 +152,6 @@ namespace game
             g_mouseReady = true;
         #endif
     }
-
-    
-    
-    
-    
-    
-    
     
     static bool g_keyState[256] = { false };
     static bool g_specialLeft = false, g_specialRight = false;
@@ -209,7 +168,6 @@ namespace game
         if (key == GLUT_KEY_LEFT)  g_specialLeft = false;
         if (key == GLUT_KEY_RIGHT) g_specialRight = false;
     }
-
     
     static void ResetPlayer()
     {
@@ -245,9 +203,6 @@ namespace game
     static void SpawnGhosts()
     {
         g_ghosts.clear();
-        
-        
-        
         
         struct { int col, row, texIdx; pathfinding::GridPos corner; } spawns[4] = {
             { 9, 13, 0, {19, 1} },   
@@ -345,10 +300,6 @@ namespace game
         printf("[Game] fruit seed=%u -> tile (%d,%d)\n", seed, candidates[pick].first, candidates[pick].second);
     }
 
-    
-    
-    
-
     static float DistSq(float ax, float ay, float bx, float by)
     {
         float dx = ax - bx, dy = ay - by;
@@ -366,9 +317,6 @@ namespace game
     {
         return { (int)g_cam.x, (int)g_cam.y };
     }
-
-    
-    
     
     static pathfinding::GridPos DirToGridOffset(float dirX, float dirY)
     {
@@ -377,12 +325,6 @@ namespace game
         else
             return { 0, dirY > 0.0f ? 1 : -1 };
     }
-
-    
-    
-    
-    
-    
     
     static pathfinding::GridPos ClampTargetToWalkable(pathfinding::GridPos target, pathfinding::GridPos fallback)
     {
@@ -395,10 +337,6 @@ namespace game
         return target;
     }
 
-    
-    
-    
-    
     static pathfinding::GridPos ComputeChaseTarget(Ghost& ghost)
     {
         pathfinding::GridPos playerTile = PlayerTile();
@@ -416,9 +354,6 @@ namespace game
             }
 
             case 2: 
-                    
-                    
-                    
             {
                 if (g_ghosts.empty()) return playerTile;
 
@@ -433,8 +368,7 @@ namespace game
                 return ClampTargetToWalkable(target, playerTile);
             }
 
-            case 3: 
-                    
+            case 3:                     
             {
                 const float kClydeShyDistSq = 8.0f * 8.0f;
                 return (DistSq(ghost.x, ghost.y, g_cam.x, g_cam.y) > kClydeShyDistSq)
@@ -447,9 +381,6 @@ namespace game
         }
     }
 
-    
-    
-    
     static pathfinding::GridPos ComputeFleeTarget(Ghost& ghost)
     {
         pathfinding::GridPos playerTile = PlayerTile();
@@ -460,19 +391,12 @@ namespace game
         pathfinding::GridPos target{ ghost.col + dCol * 4, ghost.row + dRow * 4 };
         return ClampTargetToWalkable(target, { ghost.col, ghost.row });
     }
-
-    
-    
     
     static void SetGhostTexture(Ghost& ghost, RCUT_TextureId tex)
     {
         RCUT_Sprite_Remove(ghost.spriteId);
         ghost.spriteId = RCUT_Sprite_Add(ghost.x, ghost.y, tex);
     }
-
-    
-    
-    
     
     static void UpdateGhostTarget(Ghost& ghost)
     {
@@ -489,12 +413,6 @@ namespace game
         pathfinding::GridPos current{ ghost.col, ghost.row };
         ghost.nextTile = pathfinding::FindNextStepBFS(current, target, kMapWidth, kMapHeight, GhostIsWalkable);
     }
-
-    
-    
-    
-    
-    
     
     static void UpdateGlobalMode(float dt)
     {
@@ -519,9 +437,6 @@ namespace game
             UpdateGhostTarget(ghost);
         }
     }
-
-    
-    
     
     static void StartFrightenedMode()
     {
@@ -537,8 +452,6 @@ namespace game
             UpdateGhostTarget(ghost);
         }
     }
-
-    
     
     static void UpdateFrightenedTimer(float dt)
     {
@@ -563,9 +476,6 @@ namespace game
     static const float kGhostFrightenedSpeed = 1.0f;
     static const float kGhostEatenSpeed = 4.0f;
     static const float kTileArriveEpsilon = 0.05f;
-
-    
-    
     
     static void UpdateGhost(Ghost& ghost, float dt)
     {
@@ -605,23 +515,12 @@ namespace game
 
         RCUT_Sprite_SetPos(ghost.spriteId, ghost.x, ghost.y);
     }
-
     
     void init()
     {
         if (!g_initialised)
         {
-            
-            
-            RCUT_Raycaster_Init(kRayW, kRayH);
-            
-            
-            
-            
-            
-            
-            
-            
+            RCUT_Raycaster_Init(kRayW, kRayH);            
             g_initialised = true;
         }
 
@@ -636,8 +535,6 @@ namespace game
         SpawnOrbs();
         setFruitSeed((unsigned int)time(nullptr));
 
-        
-        
         g_globalMode = GlobalMode::SCATTER;
         g_modeTimer = 0.0f;
         g_modeIndex = 0;
@@ -770,13 +667,7 @@ namespace game
         int winH = glutGet(GLUT_WINDOW_HEIGHT);
 
         glPixelZoom((float)winW / fbW, (FLIP_FRAMEBUFFER_Y ? -1.0f : 1.0f) * (float)winH / fbH);
-        glRasterPos2i(0, FLIP_FRAMEBUFFER_Y ? 0 : winH);
-        
-        
-        
-        
-        
-        
+        glRasterPos2i(0, FLIP_FRAMEBUFFER_Y ? 0 : winH);        
         glDrawPixels(fbW, fbH, GL_RGB, GL_UNSIGNED_BYTE, fb);
         glPixelZoom(1.0f, 1.0f);
 
